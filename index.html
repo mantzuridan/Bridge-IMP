@@ -609,8 +609,9 @@
       var vul = vulEl ? vulEl.textContent.trim() : 'None';
       var scores = [];
       b.querySelectorAll('data').forEach(function (d) {
-        var ns = parseFloat(d.getAttribute('ns'));
-        if (!Number.isNaN(ns)) scores.push(ns);
+        var raw = (d.getAttribute('ns') || '').trim();
+        if (!/^-?\d+(\.\d+)?$/.test(raw)) return; // skip non-numeric adjustments like "1/2 T." (half-table bye)
+        scores.push(parseFloat(raw));
       });
       boards.push({ id: id, vul: vul, scores: scores });
     });
