@@ -379,15 +379,32 @@
       <div class="item"><span class="k">מפגש</span><span class="v" id="sumSession">—</span></div>
       <div class="item"><span class="k">בורדים</span><span class="v" id="sumBoards">—</span></div>
       <div class="btns">
-        <button class="link-btn" id="publishBtn" type="button">פרסם ושתף קישור</button>
         <button class="link-btn" id="clearFileBtn" type="button">טען קובץ אחר</button>
       </div>
+    </div>
+    <div class="field pair-name-field" id="saveNameField" style="display:none;">
+      <label for="saveName">שם לשמירה</label>
+      <input type="text" id="saveName" maxlength="60">
+    </div>
+    <div class="btn-row" id="publishRow" style="display:none;">
+      <button class="btn btn-secondary" id="publishBtn" type="button">💾 שמור ופרסם קישור</button>
     </div>
     <div class="share-box" id="shareBox">
       <input type="text" id="shareUrl" readonly>
       <button class="btn btn-secondary" id="copyShareBtn" type="button">העתק קישור</button>
     </div>
     <div class="sync-note" id="publishNote"></div>
+  </section>
+
+  <section class="card hidden" id="cardSavedList">
+    <div class="step-title">📂 התחרויות השמורות שלי</div>
+    <div class="card-sub">לחצו על תחרות כדי לטעון אותה — נוח לגישה מהטלפון בלי להעלות שוב את הקובץ.</div>
+    <div class="results-table-wrap">
+      <table class="session" id="savedTable">
+        <thead><tr><th>שם</th><th>תאריך</th><th>מפגש</th><th></th></tr></thead>
+        <tbody id="savedBody"></tbody>
+      </table>
+    </div>
   </section>
 
   <section class="card disabled" id="cardEntry">
@@ -667,6 +684,11 @@
   var pairName = document.getElementById('pairName');
   var sharedBody = document.getElementById('sharedBody');
   var sharedEmptyState = document.getElementById('sharedEmptyState');
+  var saveNameField = document.getElementById('saveNameField');
+  var saveName = document.getElementById('saveName');
+  var publishRow = document.getElementById('publishRow');
+  var cardSavedList = document.getElementById('cardSavedList');
+  var savedBody = document.getElementById('savedBody');
 
   function applyTournament(t) {
     state.tournament = t;
@@ -697,8 +719,13 @@
       try {
         var t = parseTournamentXML(e.target.result);
         applyTournament(t);
-        publishBtn.style.display = sb ? 'inline' : 'none';
+        if (sb) {
+          saveNameField.style.display = 'flex';
+          saveName.value = t.title;
+          publishRow.style.display = 'flex';
+        }
         publishNote.textContent = '';
+        shareBox.classList.remove('show');
       } catch (err) {
         alert('שגיאה בטעינת הקובץ: ' + err.message);
       }
@@ -722,6 +749,8 @@
     cardEntry.classList.add('disabled');
     resultPreview.classList.remove('show');
     shareBox.classList.remove('show');
+    saveNameField.style.display = 'none';
+    publishRow.style.display = 'none';
   });
 
   function currentBoard() {
@@ -856,23 +885,62 @@
   publishBtn.addEventListener('click', async function () {
     if (!sb || !state.tournament) return;
     publishBtn.disabled = true;
-    publishNote.textContent = 'מפרסם...';
+    publishNote.textContent = 'שומר...';
     var t = state.tournament;
-    var payload = { title: t.title, date: t.date, session_info: t.session, boards: t.boards };
+    var name = saveName.value.trim() || t.title;
+    var payload = { title: name, date: t.date, session_info: t.session, boards: t.boards };
     var res = await sb.from('imp_tournaments').insert(payload).select().single();
     publishBtn.disabled = false;
     if (res.error) {
-      publishNote.textContent = 'הפרסום נכשל: ' + res.error.message;
+      publishNote.textContent = 'השמירה נכשלה: ' + res.error.message;
       return;
     }
     state.tournamentId = res.data.id;
     history.pushState(null, '', '?t=' + res.data.id);
     setShareUrl(res.data.id);
-    publishNote.textContent = 'פורסם! שתפו את הקישור עם שאר הזוגות.';
-    publishBtn.style.display = 'none';
+    publishNote.textContent = 'נשמר! אפשר לגשת אליו שוב מרשימת "התחרויות השמורות שלי", או לשתף את הקישור.';
+    publishRow.style.display = 'none';
     subscribeShared();
     loadSharedEntries();
+    loadSavedList();
   });
+
+  function enterTournament(row) {
+    applyTournament({ title: row.title, date: row.date, session: row.session_info, sessions: '', boards: row.boards });
+    state.tournamentId = row.id;
+    cardUpload.classList.add('hidden');
+    cardSavedList.classList.add('hidden');
+    sharedBanner.style.display = 'flex';
+    sharedTitleEl.textContent = row.title;
+    history.pushState(null, '', '?t=' + row.id);
+    subscribeShared();
+    loadSharedEntries();
+  }
+
+  async function loadSavedList() {
+    if (!sb) return;
+    var res = await sb.from('imp_tournaments')
+      .select('id, title, date, session_info, created_at')
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (res.error || !res.data || !res.data.length) { cardSavedList.classList.add('hidden'); return; }
+    savedBody.innerHTML = '';
+    res.data.forEach(function (row) {
+      var tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.innerHTML =
+        '<td>' + (row.title || 'ללא שם') + '</td>' +
+        '<td class="num">' + (row.date || '—') + '</td>' +
+        '<td>' + (row.session_info || '—') + '</td>' +
+        '<td>➜</td>';
+      tr.addEventListener('click', async function () {
+        var full = await sb.from('imp_tournaments').select('*').eq('id', row.id).single();
+        if (!full.error && full.data) enterTournament(full.data);
+      });
+      savedBody.appendChild(tr);
+    });
+    cardSavedList.classList.remove('hidden');
+  }
 
   copyShareBtn.addEventListener('click', function () {
     shareUrl.select();
@@ -935,20 +1003,14 @@
       .subscribe();
   }
 
-  // ---------- Load from shared link ----------
-  (async function initFromLink() {
+  // ---------- Init: load from shared link, or show the saved-tournaments list ----------
+  (async function init() {
     var tid = new URLSearchParams(window.location.search).get('t');
-    if (!tid || !sb) return;
+    if (!tid) { loadSavedList(); return; }
+    if (!sb) return;
     var res = await sb.from('imp_tournaments').select('*').eq('id', tid).single();
-    if (res.error || !res.data) return;
-    var row = res.data;
-    applyTournament({ title: row.title, date: row.date, session: row.session_info, sessions: '', boards: row.boards });
-    state.tournamentId = row.id;
-    cardUpload.classList.add('hidden');
-    sharedBanner.style.display = 'flex';
-    sharedTitleEl.textContent = row.title;
-    subscribeShared();
-    loadSharedEntries();
+    if (res.error || !res.data) { loadSavedList(); return; }
+    enterTournament(res.data);
   })();
 })();
 </script>
