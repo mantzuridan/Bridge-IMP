@@ -28,3 +28,9 @@ create policy "public read" on public.imp_entries for select using (true);
 create policy "public insert" on public.imp_entries for insert with check (true);
 
 alter publication supabase_realtime add table public.imp_entries;
+
+-- RLS policies alone are not enough: tables created via the SQL editor (unlike
+-- the Table Editor UI) don't automatically grant base privileges to the anon
+-- role, so requests fail with "permission denied" before RLS is even checked.
+grant select, insert on public.imp_tournaments to anon, authenticated;
+grant select, insert on public.imp_entries to anon, authenticated;
