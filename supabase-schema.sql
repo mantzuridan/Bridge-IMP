@@ -1,0 +1,30 @@
+-- Bridge-IMP: run this once in the Supabase SQL editor (same project as Bridge-Bidding).
+-- Tables are prefixed "imp_" so they don't collide with the existing "scores" table.
+
+create table public.imp_tournaments (
+  id uuid primary key default gen_random_uuid(),
+  title text,
+  date text,
+  session_info text,
+  boards jsonb not null,
+  created_at timestamptz default now()
+);
+alter table public.imp_tournaments enable row level security;
+create policy "public read" on public.imp_tournaments for select using (true);
+create policy "public insert" on public.imp_tournaments for insert with check (true);
+
+create table public.imp_entries (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid references public.imp_tournaments(id) on delete cascade,
+  board_id int not null,
+  pair_name text,
+  contract_label text,
+  ns_score int,
+  imp int,
+  created_at timestamptz default now()
+);
+alter table public.imp_entries enable row level security;
+create policy "public read" on public.imp_entries for select using (true);
+create policy "public insert" on public.imp_entries for insert with check (true);
+
+alter publication supabase_realtime add table public.imp_entries;

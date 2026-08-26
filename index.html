@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>אימפים בדיעבד</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F6F1;
+    --surface: #FFFFFF;
+    --surface-sunken: #EEF1EA;
+    --ink: #1B2620;
+    --ink-muted: #5B6B60;
+    --ink-faint: #8B9A8F;
+    --border: #DCE2D7;
+    --accent: #2F6B4F;
+    --accent-strong: #1F4D38;
+    --accent-contrast: #FFFFFF;
+    --accent-soft: #E4EEE7;
+    --suit-black: #22262B;
+    --suit-red: #A9403F;
+    --good: #2F6B4F;
+    --good-soft: #E4EEE7;
+    --bad: #A9403F;
+    --bad-soft: #F5E7E5;
+    --neutral-soft: #EEF1EA;
+    --shadow: 0 1px 2px rgba(27,38,32,0.06), 0 8px 24px -12px rgba(27,38,32,0.18);
+    --focus-ring: #2F6B4F;
+    --display-font: "Frank Ruhl Libre", "Times New Roman", serif;
+    --body-font: "Heebo", "Segoe UI", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10150F;
+      --surface: #171E17;
+      --surface-sunken: #1E261E;
+      --ink: #E9EDE5;
+      --ink-muted: #9DAC9B;
+      --ink-faint: #6C7A6A;
+      --border: #2B342A;
+      --accent: #5CAB80;
+      --accent-strong: #7BC59A;
+      --accent-contrast: #0B140D;
+      --accent-soft: #1D2E24;
+      --suit-black: #DCE1DB;
+      --suit-red: #E08585;
+      --good: #5CAB80;
+      --good-soft: #1D2E24;
+      --bad: #E08585;
+      --bad-soft: #33201F;
+      --neutral-soft: #1E261E;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+      --focus-ring: #7BC59A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10150F;
+    --surface: #171E17;
+    --surface-sunken: #1E261E;
+    --ink: #E9EDE5;
+    --ink-muted: #9DAC9B;
+    --ink-faint: #6C7A6A;
+    --border: #2B342A;
+    --accent: #5CAB80;
+    --accent-strong: #7BC59A;
+    --accent-contrast: #0B140D;
+    --accent-soft: #1D2E24;
+    --suit-black: #DCE1DB;
+    --suit-red: #E08585;
+    --good: #5CAB80;
+    --good-soft: #1D2E24;
+    --bad: #E08585;
+    --bad-soft: #33201F;
+    --neutral-soft: #1E261E;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    --focus-ring: #7BC59A;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body-font);
+    direction: rtl;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  header.page {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+  header.page .eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  header.page h1 {
+    font-family: var(--display-font);
+    font-size: 34px;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  header.page p {
+    margin: 2px 0 0;
+    color: var(--ink-muted);
+    font-size: 15px;
+    max-width: 62ch;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .card.disabled { opacity: 0.5; pointer-events: none; }
+  .card.hidden { display: none; }
+
+  .step-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--display-font);
+    font-size: 19px;
+    font-weight: 700;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--body-font);
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+    background: var(--surface-sunken);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone input { display: none; }
+  .dropzone .icon { font-size: 26px; margin-bottom: 6px; }
+  .dropzone .main { font-size: 15px; font-weight: 600; }
+  .dropzone .sub { font-size: 13px; color: var(--ink-muted); margin-top: 2px; }
+
+  .file-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    padding: 12px 14px;
+    background: var(--accent-soft);
+    border-radius: 10px;
+    font-size: 14px;
+    align-items: center;
+  }
+  .file-summary .item { display: flex; flex-direction: column; gap: 2px; }
+  .file-summary .item .k { color: var(--ink-muted); font-size: 12px; }
+  .file-summary .item .v { font-weight: 700; color: var(--accent-strong); }
+  .file-summary .btns { display: flex; gap: 14px; margin-inline-start: auto; align-items: center; }
+  .link-btn {
+    background: none; border: none; color: var(--accent);
+    font-family: var(--body-font); font-size: 13px; font-weight: 600;
+    cursor: pointer; text-decoration: underline; padding: 0;
+  }
+
+  .share-box {
+    display: none;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .share-box.show { display: flex; }
+  .share-box input {
+    flex: 1;
+    direction: ltr;
+    font-family: var(--body-font);
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-muted);
+  }
+
+  .shared-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--accent-soft);
+    border-radius: 10px;
+    font-size: 14.5px;
+  }
+  .shared-banner .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .shared-banner b { color: var(--accent-strong); }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px 14px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-muted); }
+  select, input[type="text"] {
+    font-family: var(--body-font);
+    font-size: 15px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  select {
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-muted) 50%), linear-gradient(135deg, var(--ink-muted) 50%, transparent 50%);
+    background-position: calc(14px) calc(1.1em), calc(9px) calc(1.1em);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-inline-end: 26px;
+  }
+  select:focus, input:focus, button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+  .vul-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    background: var(--neutral-soft); color: var(--ink-muted);
+    align-self: flex-start;
+  }
+  .vul-badge.on { background: var(--bad-soft); color: var(--bad); }
+  .vul-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .btn {
+    font-family: var(--body-font);
+    font-weight: 700;
+    font-size: 14.5px;
+    padding: 11px 20px;
+    border-radius: 9px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.05s ease, background 0.15s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary { background: var(--accent); color: var(--accent-contrast); }
+  .btn-primary:hover { background: var(--accent-strong); }
+  .btn-secondary { background: var(--surface-sunken); color: var(--ink); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--neutral-soft); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .result-preview {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+  }
+  .result-preview.show { display: flex; }
+  .result-preview .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 14.5px; }
+  .result-preview .row .k { color: var(--ink-muted); }
+  .result-preview .row .v { font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: embed; }
+  .result-preview .imp-hero { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px dashed var(--border); }
+  .result-preview .imp-hero .k { font-weight: 700; font-size: 15px; }
+  .result-preview .imp-hero .v {
+    font-family: var(--display-font); font-size: 26px; font-weight: 700;
+    font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: embed;
+  }
+  .imp-pos { color: var(--good); }
+  .imp-neg { color: var(--bad); }
+  .imp-zero { color: var(--ink-muted); }
+
+  details.compare { font-size: 13.5px; }
+  details.compare summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .compare-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  .compare-table th, .compare-table td { padding: 5px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+  .compare-table td { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: embed; }
+  .compare-table th { color: var(--ink-muted); font-weight: 600; }
+
+  .totals-strip {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-radius: 12px;
+    background: var(--accent-strong); color: var(--accent-contrast);
+    box-shadow: var(--shadow);
+  }
+  .totals-strip .label { font-size: 13.5px; opacity: 0.85; font-weight: 600; }
+  .totals-strip .value {
+    font-family: var(--display-font); font-size: 30px; font-weight: 700;
+    font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: embed;
+  }
+
+  .results-table-wrap { overflow-x: auto; }
+  table.session { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.session th, table.session td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); }
+  table.session th { color: var(--ink-muted); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.02em; }
+  table.session td { font-variant-numeric: tabular-nums; }
+  table.session td.num { direction: ltr; unicode-bidi: embed; }
+  table.session tbody tr:hover { background: var(--surface-sunken); }
+  .rm-btn {
+    background: none; border: none; color: var(--ink-faint);
+    cursor: pointer; font-size: 15px; line-height: 1; padding: 4px;
+  }
+  .rm-btn:hover { color: var(--bad); }
+  .empty-state { color: var(--ink-faint); font-size: 14px; text-align: center; padding: 18px 0; }
+
+  .pair-name-field { max-width: 260px; }
+  .card-sub { font-size: 13px; color: var(--ink-muted); margin-top: -8px; }
+  .sync-note { font-size: 12.5px; color: var(--ink-faint); }
+
+  footer.note { font-size: 12.5px; color: var(--ink-faint); text-align: center; padding-top: 6px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="page">
+    <div class="eyebrow">ברומטר · IMP</div>
+    <h1>אימפים בדיעבד</h1>
+    <p>העלו קובץ XML של תחרות ברומטר שכבר שוחקה, הזינו כריזה ותוצאה של זוג ששיחק את הבורדים בדיעבד, וקבלו כמה אימפים היו מקבלים אילו התחרו בפועל — מול כל התוצאות שנרשמו בכל בורד. אפשר גם לפרסם תחרות ולשתף קישור, כדי שכל זוג יזין את שלו בלי להעלות את הקובץ בעצמו.</p>
+  </header>
+
+  <section class="shared-banner" id="sharedBanner" style="display:none;">
+    <span class="dot"></span>
+    <span>תחרות משותפת שנטענה מקישור: <b id="sharedTitle">—</b></span>
+  </section>
+
+  <section class="card" id="cardUpload">
+    <div class="step-title"><span class="step-num">1</span> טעינת קובץ התחרות</div>
+    <label class="dropzone" id="dropzone" for="fileInput">
+      <div class="icon">📄</div>
+      <div class="main">לחצו לבחירת קובץ XML, או גררו אותו לכאן</div>
+      <div class="sub">קובץ הייצוא של התחרות (למשל מ-Pair AR)</div>
+      <input type="file" id="fileInput" accept=".xml,text/xml" />
+    </label>
+    <div class="file-summary" id="fileSummary" style="display:none;">
+      <div class="item"><span class="k">תחרות</span><span class="v" id="sumTitle">—</span></div>
+      <div class="item"><span class="k">תאריך</span><span class="v" id="sumDate">—</span></div>
+      <div class="item"><span class="k">מפגש</span><span class="v" id="sumSession">—</span></div>
+      <div class="item"><span class="k">בורדים</span><span class="v" id="sumBoards">—</span></div>
+      <div class="btns">
+        <button class="link-btn" id="publishBtn" type="button">פרסם ושתף קישור</button>
+        <button class="link-btn" id="clearFileBtn" type="button">טען קובץ אחר</button>
+      </div>
+    </div>
+    <div class="share-box" id="shareBox">
+      <input type="text" id="shareUrl" readonly>
+      <button class="btn btn-secondary" id="copyShareBtn" type="button">העתק קישור</button>
+    </div>
+    <div class="sync-note" id="publishNote"></div>
+  </section>
+
+  <section class="card disabled" id="cardEntry">
+    <div class="step-title"><span class="step-num">2</span> הזנת כריזה ותוצאה</div>
+
+    <div class="field-grid">
+      <div class="field">
+        <label for="fBoard">בורד</label>
+        <select id="fBoard"></select>
+      </div>
+      <div class="field">
+        <label>חשיפה</label>
+        <span class="vul-badge" id="vulBadge">—</span>
+      </div>
+      <div class="field">
+        <label for="fLevel">גובה</label>
+        <select id="fLevel">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fSuit">צבע</label>
+        <select id="fSuit">
+          <option value="C">♣ תלתן</option>
+          <option value="D">♦ יהלום</option>
+          <option value="H">♥ לב</option>
+          <option value="S">♠ עלה</option>
+          <option value="N">ללא שליט</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fDbl">הכפלה</label>
+        <select id="fDbl">
+          <option value="0">רגיל</option>
+          <option value="1">X — מוכפל</option>
+          <option value="2">XX — מוכפל כפול</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fDecl">מי הכריז את החוזה</label>
+        <select id="fDecl">
+          <option value="NS">צפון־דרום</option>
+          <option value="EW">מזרח־מערב</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fResult">תוצאה</label>
+        <select id="fResult"></select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="calcBtn" type="button">חשב אימפים</button>
+    </div>
+
+    <div class="result-preview" id="resultPreview">
+      <div class="row"><span class="k">ניקוד גולמי (מנקודת מבט צפון־דרום)</span><span class="v" id="rScore">—</span></div>
+      <div class="row"><span class="k">תוצאות שנרשמו בפועל בבורד זה</span><span class="v" id="rCount">—</span></div>
+      <div class="imp-hero"><span class="k">אימפים לבורד</span><span class="v" id="rImp">—</span></div>
+      <details class="compare">
+        <summary>פירוט ההשוואה מול כל התוצאות בבורד</summary>
+        <div class="results-table-wrap">
+          <table class="compare-table" id="compareTable"></table>
+        </div>
+      </details>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="addRowBtn" type="button">➕ הוסף לתוצאה המצטברת</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="cardTotals">
+    <div class="step-title"><span class="step-num">3</span> תוצאה מצטברת שלי</div>
+    <div class="field pair-name-field">
+      <label for="pairName">שם / זוג (לשיתוף בלוח המשותף)</label>
+      <input type="text" id="pairName" placeholder="לדוגמה: כהן־לוי" maxlength="40">
+    </div>
+    <div class="results-table-wrap">
+      <table class="session" id="sessionTable">
+        <thead>
+          <tr><th>בורד</th><th>חוזה</th><th>ניקוד</th><th>אימפים</th><th></th></tr>
+        </thead>
+        <tbody id="sessionBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState">עדיין לא הוספתם בורדים לתוצאה המצטברת.</div>
+    </div>
+    <div class="totals-strip">
+      <span class="label">סה"כ אימפים</span>
+      <span class="value" id="grandTotal">0</span>
+    </div>
+  </section>
+
+  <section class="card hidden" id="cardShared">
+    <div class="step-title"><span class="step-num">4</span> לוח משותף לתחרות זו</div>
+    <div class="card-sub">מתעדכן בזמן אמת עם כל מי שמזין תוצאה דרך אותו קישור.</div>
+    <div class="results-table-wrap">
+      <table class="session" id="sharedTable">
+        <thead>
+          <tr><th>שם/זוג</th><th>בורד</th><th>חוזה</th><th>אימפים</th></tr>
+        </thead>
+        <tbody id="sharedBody"></tbody>
+      </table>
+      <div class="empty-state" id="sharedEmptyState">עדיין אין כניסות משותפות לתחרות זו.</div>
+    </div>
+  </section>
+
+  <footer class="note">החישוב הוא Cross-IMP סטנדרטי: השוואת הניקוד שלכם מול כל תוצאה שנרשמה בפועל בבורד, לפי טבלת ה-IMP הרשמית, וממוצע. ייתכן הבדל של אימפ בודד מול תוכנת המועדון בבורדים עם תוצאה קיצונית חריגה.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------- IMP table ----------
+  var IMP_TABLE = [
+    [10,0],[40,1],[80,2],[120,3],[160,4],[210,5],[260,6],[310,7],
+    [360,8],[420,9],[490,10],[590,11],[740,12],[890,13],[1090,14],
+    [1290,15],[1490,16],[1740,17],[1990,18],[2240,19],[2490,20],
+    [2990,21],[3490,22],[3990,23]
+  ];
+  function impFor(absDiff) {
+    for (var i = 0; i < IMP_TABLE.length; i++) {
+      if (absDiff <= IMP_TABLE[i][0]) return IMP_TABLE[i][1];
+    }
+    return 24;
+  }
+  function signedImp(diff) {
+    return diff >= 0 ? impFor(diff) : -impFor(-diff);
+  }
+  function roundHalfAway(x) {
+    return x >= 0 ? Math.floor(x + 0.5) : -Math.floor(-x + 0.5);
+  }
+
+  // ---------- Scoring engine ----------
+  function bidTrickScore(level, suit) {
+    if (suit === 'N') return 40 + (level - 1) * 30;
+    var per = (suit === 'H' || suit === 'S') ? 30 : 20;
+    return per * level;
+  }
+  function overtrickUnit(suit) {
+    if (suit === 'N') return 30;
+    return (suit === 'H' || suit === 'S') ? 30 : 20;
+  }
+  function doubledCumulative(n, vulnerable) {
+    var total = 0;
+    for (var i = 1; i <= n; i++) {
+      var inc;
+      if (vulnerable) inc = (i === 1) ? 200 : 300;
+      else inc = (i === 1) ? 100 : (i <= 3 ? 200 : 300);
+      total += inc;
+    }
+    return total;
+  }
+  function undertrickPenalty(n, doubled, vulnerable) {
+    if (n <= 0) return 0;
+    if (doubled === 0) return n * (vulnerable ? 100 : 50);
+    var base = doubledCumulative(n, vulnerable);
+    return doubled === 2 ? base * 2 : base;
+  }
+  // resultRel: 0 = made exactly, >0 = overtricks, <0 = down N
+  function contractToNsScore(input) {
+    var level = input.level, suit = input.suit, doubled = input.doubled,
+        declarerSide = input.declarerSide, resultRel = input.resultRel, vul = input.vul;
+    var vulnerable = (vul === 'All') || (vul === declarerSide);
+    var declarerScore;
+    if (resultRel >= 0) {
+      var trick = bidTrickScore(level, suit);
+      if (doubled === 1) trick *= 2; else if (doubled === 2) trick *= 4;
+      var gameBonus = trick >= 100 ? (vulnerable ? 500 : 300) : 50;
+      var overBonus = 0;
+      if (resultRel > 0) {
+        if (doubled === 0) overBonus = resultRel * overtrickUnit(suit);
+        else {
+          var perOver = doubled === 1 ? (vulnerable ? 200 : 100) : (vulnerable ? 400 : 200);
+          overBonus = resultRel * perOver;
+        }
+      }
+      var insult = doubled === 1 ? 50 : (doubled === 2 ? 100 : 0);
+      var slam = 0;
+      if (level === 6) slam = vulnerable ? 750 : 500;
+      else if (level === 7) slam = vulnerable ? 1500 : 1000;
+      declarerScore = trick + gameBonus + overBonus + insult + slam;
+    } else {
+      declarerScore = -undertrickPenalty(-resultRel, doubled, vulnerable);
+    }
+    return declarerSide === 'NS' ? declarerScore : -declarerScore;
+  }
+
+  function crossImp(newNsScore, existingScores) {
+    var comparisons = existingScores.map(function (s) {
+      var diff = newNsScore - s;
+      return { opponent: s, diff: diff, imp: signedImp(diff) };
+    });
+    var sum = comparisons.reduce(function (a, c) { return a + c.imp; }, 0);
+    var avg = comparisons.length ? sum / comparisons.length : 0;
+    return { comparisons: comparisons, rounded: roundHalfAway(avg) };
+  }
+
+  // ---------- XML parsing ----------
+  function parseTournamentXML(text) {
+    var doc = new DOMParser().parseFromString(text, 'application/xml');
+    if (doc.querySelector('parsererror')) throw new Error('קובץ ה-XML אינו תקין או פגום.');
+    var root = doc.documentElement;
+    var info = root.querySelector('info');
+    var title = (info && info.querySelector('title') && info.querySelector('title').textContent.trim()) || 'ללא שם';
+    var date = (info && info.querySelector('date') && info.querySelector('date').textContent.trim()) || '—';
+    var session = (info && info.querySelector('session') && info.querySelector('session').textContent.trim()) || '';
+    var sessions = (info && info.querySelector('sessions') && info.querySelector('sessions').textContent.trim()) || '';
+
+    var freq = root.querySelector('freq');
+    if (!freq) throw new Error('לא נמצאו בורדים בקובץ (חסר תג freq).');
+    var boards = [];
+    freq.querySelectorAll('board').forEach(function (b) {
+      var id = parseInt(b.getAttribute('id'), 10);
+      if (Number.isNaN(id)) return;
+      var vulEl = b.querySelector('vul');
+      var vul = vulEl ? vulEl.textContent.trim() : 'None';
+      var scores = [];
+      b.querySelectorAll('data').forEach(function (d) {
+        var ns = parseFloat(d.getAttribute('ns'));
+        if (!Number.isNaN(ns)) scores.push(ns);
+      });
+      boards.push({ id: id, vul: vul, scores: scores });
+    });
+    if (!boards.length) throw new Error('לא נמצאו בורדים תקינים בקובץ.');
+    boards.sort(function (a, b) { return a.id - b.id; });
+    return { title: title, date: date, session: session, sessions: sessions, boards: boards };
+  }
+
+  // ---------- Supabase ----------
+  var SUPABASE_URL = 'https://djciswpmmreqmufgbxtv.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_4tNNdTa_s9CcL9-1ie_AhA_Q-QyWfzK';
+  var sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+  // ---------- App state ----------
+  var state = { tournament: null, boardById: {}, sessionRows: [], lastCalc: null, tournamentId: null, sharedEntries: [] };
+
+  var suitInfo = {
+    C: { sym: '♣', name: 'תלתן' },
+    D: { sym: '♦', name: 'יהלום' },
+    H: { sym: '♥', name: 'לב' },
+    S: { sym: '♠', name: 'עלה' },
+    N: { sym: 'NT', name: 'ללא שליט' }
+  };
+  var vulLabel = { None: 'ללא חשיפה', NS: 'צפון־דרום חשופים', EW: 'מזרח־מערב חשופים', All: 'כולם חשופים' };
+
+  // ---------- DOM refs ----------
+  var fileInput = document.getElementById('fileInput');
+  var dropzone = document.getElementById('dropzone');
+  var fileSummary = document.getElementById('fileSummary');
+  var cardUpload = document.getElementById('cardUpload');
+  var cardEntry = document.getElementById('cardEntry');
+  var cardShared = document.getElementById('cardShared');
+  var sharedBanner = document.getElementById('sharedBanner');
+  var sharedTitleEl = document.getElementById('sharedTitle');
+  var fBoard = document.getElementById('fBoard');
+  var vulBadge = document.getElementById('vulBadge');
+  var fLevel = document.getElementById('fLevel');
+  var fSuit = document.getElementById('fSuit');
+  var fDbl = document.getElementById('fDbl');
+  var fDecl = document.getElementById('fDecl');
+  var fResult = document.getElementById('fResult');
+  var calcBtn = document.getElementById('calcBtn');
+  var resultPreview = document.getElementById('resultPreview');
+  var addRowBtn = document.getElementById('addRowBtn');
+  var sessionBody = document.getElementById('sessionBody');
+  var emptyState = document.getElementById('emptyState');
+  var grandTotal = document.getElementById('grandTotal');
+  var publishBtn = document.getElementById('publishBtn');
+  var publishNote = document.getElementById('publishNote');
+  var shareBox = document.getElementById('shareBox');
+  var shareUrl = document.getElementById('shareUrl');
+  var copyShareBtn = document.getElementById('copyShareBtn');
+  var pairName = document.getElementById('pairName');
+  var sharedBody = document.getElementById('sharedBody');
+  var sharedEmptyState = document.getElementById('sharedEmptyState');
+
+  function applyTournament(t) {
+    state.tournament = t;
+    state.boardById = {};
+    t.boards.forEach(function (b) { state.boardById[b.id] = b; });
+    document.getElementById('sumTitle').textContent = t.title;
+    document.getElementById('sumDate').textContent = t.date;
+    document.getElementById('sumSession').textContent = t.session && t.sessions ? (t.session + ' מתוך ' + t.sessions) : (t.session || '—');
+    document.getElementById('sumBoards').textContent = t.boards.length;
+    fileSummary.style.display = 'flex';
+    cardEntry.classList.remove('disabled');
+    fBoard.innerHTML = '';
+    t.boards.forEach(function (b) {
+      var opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = 'בורד ' + b.id + ' (' + b.scores.length + ' תוצאות)';
+      fBoard.appendChild(opt);
+    });
+    updateVulBadge();
+    buildResultOptions();
+    resultPreview.classList.remove('show');
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var t = parseTournamentXML(e.target.result);
+        applyTournament(t);
+        publishBtn.style.display = sb ? 'inline' : 'none';
+        publishNote.textContent = '';
+      } catch (err) {
+        alert('שגיאה בטעינת הקובץ: ' + err.message);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  fileInput.addEventListener('change', function () { handleFile(this.files[0]); });
+  dropzone.addEventListener('dragover', function (e) { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', function () { dropzone.classList.remove('drag'); });
+  dropzone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  document.getElementById('clearFileBtn').addEventListener('click', function () {
+    state.tournament = null;
+    state.boardById = {};
+    fileInput.value = '';
+    fileSummary.style.display = 'none';
+    cardEntry.classList.add('disabled');
+    resultPreview.classList.remove('show');
+    shareBox.classList.remove('show');
+  });
+
+  function currentBoard() {
+    var id = parseInt(fBoard.value, 10);
+    return state.boardById[id];
+  }
+
+  function updateVulBadge() {
+    var b = currentBoard();
+    if (!b) { vulBadge.textContent = '—'; vulBadge.className = 'vul-badge'; return; }
+    vulBadge.innerHTML = '<span class="dot"></span>' + (vulLabel[b.vul] || b.vul);
+    vulBadge.className = 'vul-badge' + (b.vul !== 'None' ? ' on' : '');
+  }
+  fBoard.addEventListener('change', function () { updateVulBadge(); resultPreview.classList.remove('show'); });
+
+  function buildResultOptions() {
+    var level = parseInt(fLevel.value, 10);
+    var tricksBid = 6 + level;
+    var maxOver = 13 - tricksBid;
+    var maxUnder = tricksBid;
+    fResult.innerHTML = '';
+    var exact = document.createElement('option');
+    exact.value = '0';
+    exact.textContent = 'בדיוק (0)';
+    fResult.appendChild(exact);
+    for (var o = 1; o <= maxOver; o++) {
+      var opt = document.createElement('option');
+      opt.value = String(o);
+      opt.textContent = '+' + o;
+      fResult.appendChild(opt);
+    }
+    for (var u = 1; u <= maxUnder; u++) {
+      var optd = document.createElement('option');
+      optd.value = String(-u);
+      optd.textContent = '−' + u + ' (ירד)';
+      fResult.appendChild(optd);
+    }
+  }
+  fLevel.addEventListener('change', function () { buildResultOptions(); resultPreview.classList.remove('show'); });
+  [fSuit, fDbl, fDecl, fResult].forEach(function (el) {
+    el.addEventListener('change', function () { resultPreview.classList.remove('show'); });
+  });
+  buildResultOptions();
+
+  function contractLabel() {
+    var s = suitInfo[fSuit.value];
+    var dbl = fDbl.value === '1' ? ' X' : (fDbl.value === '2' ? ' XX' : '');
+    var res = parseInt(fResult.value, 10);
+    var resTxt = res === 0 ? '' : (res > 0 ? ' +' + res : ' ' + res);
+    var declTxt = fDecl.value === 'NS' ? 'צפון־דרום' : 'מזרח־מערב';
+    return fLevel.value + s.sym + dbl + resTxt + ' (' + declTxt + ')';
+  }
+
+  calcBtn.addEventListener('click', function () {
+    var b = currentBoard();
+    if (!b) { alert('טרם נטען קובץ תחרות.'); return; }
+    var input = {
+      level: parseInt(fLevel.value, 10),
+      suit: fSuit.value,
+      doubled: parseInt(fDbl.value, 10),
+      declarerSide: fDecl.value,
+      resultRel: parseInt(fResult.value, 10),
+      vul: b.vul
+    };
+    var nsScore = contractToNsScore(input);
+    var result = crossImp(nsScore, b.scores);
+    state.lastCalc = { boardId: b.id, contract: contractLabel(), nsScore: nsScore, imp: result.rounded };
+
+    document.getElementById('rScore').textContent = (nsScore > 0 ? '+' : '') + nsScore;
+    document.getElementById('rCount').textContent = b.scores.length;
+    var impEl = document.getElementById('rImp');
+    var impCls = result.rounded > 0 ? 'imp-pos' : (result.rounded < 0 ? 'imp-neg' : 'imp-zero');
+    impEl.textContent = (result.rounded > 0 ? '+' : '') + result.rounded;
+    impEl.className = 'v ' + impCls;
+
+    var table = document.getElementById('compareTable');
+    var rows = '<tr><th>ניקוד יריב</th><th>הפרש</th><th>אימפים</th></tr>';
+    result.comparisons.forEach(function (c) {
+      rows += '<tr><td>' + c.opponent + '</td><td>' + (c.diff > 0 ? '+' : '') + c.diff + '</td><td>' + (c.imp > 0 ? '+' : '') + c.imp + '</td></tr>';
+    });
+    table.innerHTML = rows;
+
+    resultPreview.classList.add('show');
+  });
+
+  addRowBtn.addEventListener('click', function () {
+    if (!state.lastCalc) return;
+    state.sessionRows.push(state.lastCalc);
+    renderSession();
+    if (state.tournamentId && pairName.value.trim()) {
+      submitSharedEntry(state.lastCalc, pairName.value.trim());
+    }
+  });
+
+  function renderSession() {
+    sessionBody.innerHTML = '';
+    if (!state.sessionRows.length) {
+      emptyState.style.display = 'block';
+    } else {
+      emptyState.style.display = 'none';
+      state.sessionRows.forEach(function (row, idx) {
+        var tr = document.createElement('tr');
+        var impCls = row.imp > 0 ? 'imp-pos' : (row.imp < 0 ? 'imp-neg' : 'imp-zero');
+        tr.innerHTML =
+          '<td class="num">' + row.boardId + '</td>' +
+          '<td>' + row.contract + '</td>' +
+          '<td class="num">' + (row.nsScore > 0 ? '+' : '') + row.nsScore + '</td>' +
+          '<td class="num ' + impCls + '">' + (row.imp > 0 ? '+' : '') + row.imp + '</td>' +
+          '<td><button class="rm-btn" data-idx="' + idx + '" title="הסר">✕</button></td>';
+        sessionBody.appendChild(tr);
+      });
+    }
+    var total = state.sessionRows.reduce(function (a, r) { return a + r.imp; }, 0);
+    grandTotal.textContent = (total > 0 ? '+' : '') + total;
+    sessionBody.querySelectorAll('.rm-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.sessionRows.splice(parseInt(this.getAttribute('data-idx'), 10), 1);
+        renderSession();
+      });
+    });
+  }
+  renderSession();
+
+  // ---------- Sharing / Supabase ----------
+  function setShareUrl(id) {
+    var url = new URL(window.location.href);
+    url.searchParams.set('t', id);
+    shareUrl.value = url.toString();
+    shareBox.classList.add('show');
+  }
+
+  publishBtn.addEventListener('click', async function () {
+    if (!sb || !state.tournament) return;
+    publishBtn.disabled = true;
+    publishNote.textContent = 'מפרסם...';
+    var t = state.tournament;
+    var payload = { title: t.title, date: t.date, session_info: t.session, boards: t.boards };
+    var res = await sb.from('imp_tournaments').insert(payload).select().single();
+    publishBtn.disabled = false;
+    if (res.error) {
+      publishNote.textContent = 'הפרסום נכשל: ' + res.error.message;
+      return;
+    }
+    state.tournamentId = res.data.id;
+    history.pushState(null, '', '?t=' + res.data.id);
+    setShareUrl(res.data.id);
+    publishNote.textContent = 'פורסם! שתפו את הקישור עם שאר הזוגות.';
+    publishBtn.style.display = 'none';
+    subscribeShared();
+    loadSharedEntries();
+  });
+
+  copyShareBtn.addEventListener('click', function () {
+    shareUrl.select();
+    navigator.clipboard && navigator.clipboard.writeText(shareUrl.value).catch(function () {});
+    copyShareBtn.textContent = 'הועתק!';
+    setTimeout(function () { copyShareBtn.textContent = 'העתק קישור'; }, 1500);
+  });
+
+  async function submitSharedEntry(calc, name) {
+    if (!sb || !state.tournamentId) return;
+    await sb.from('imp_entries').insert({
+      tournament_id: state.tournamentId,
+      board_id: calc.boardId,
+      pair_name: name,
+      contract_label: calc.contract,
+      ns_score: calc.nsScore,
+      imp: calc.imp
+    });
+  }
+
+  function renderShared() {
+    var rows = state.sharedEntries;
+    sharedBody.innerHTML = '';
+    if (!rows.length) {
+      sharedEmptyState.style.display = 'block';
+    } else {
+      sharedEmptyState.style.display = 'none';
+      rows.forEach(function (r) {
+        var tr = document.createElement('tr');
+        var impCls = r.imp > 0 ? 'imp-pos' : (r.imp < 0 ? 'imp-neg' : 'imp-zero');
+        tr.innerHTML =
+          '<td>' + (r.pair_name || 'ללא שם') + '</td>' +
+          '<td class="num">' + r.board_id + '</td>' +
+          '<td>' + r.contract_label + '</td>' +
+          '<td class="num ' + impCls + '">' + (r.imp > 0 ? '+' : '') + r.imp + '</td>';
+        sharedBody.appendChild(tr);
+      });
+    }
+  }
+
+  async function loadSharedEntries() {
+    if (!sb || !state.tournamentId) return;
+    var res = await sb.from('imp_entries')
+      .select('pair_name, board_id, contract_label, imp, created_at')
+      .eq('tournament_id', state.tournamentId)
+      .order('created_at', { ascending: false });
+    if (!res.error && res.data) {
+      state.sharedEntries = res.data;
+      renderShared();
+    }
+    cardShared.classList.remove('hidden');
+  }
+
+  function subscribeShared() {
+    if (!sb || !state.tournamentId) return;
+    sb.channel('imp-entries-' + state.tournamentId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imp_entries', filter: 'tournament_id=eq.' + state.tournamentId }, function () {
+        loadSharedEntries();
+      })
+      .subscribe();
+  }
+
+  // ---------- Load from shared link ----------
+  (async function initFromLink() {
+    var tid = new URLSearchParams(window.location.search).get('t');
+    if (!tid || !sb) return;
+    var res = await sb.from('imp_tournaments').select('*').eq('id', tid).single();
+    if (res.error || !res.data) return;
+    var row = res.data;
+    applyTournament({ title: row.title, date: row.date, session: row.session_info, sessions: '', boards: row.boards });
+    state.tournamentId = row.id;
+    cardUpload.classList.add('hidden');
+    sharedBanner.style.display = 'flex';
+    sharedTitleEl.textContent = row.title;
+    subscribeShared();
+    loadSharedEntries();
+  })();
+})();
+</script>
+</body>
+</html>
