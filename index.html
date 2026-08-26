@@ -362,7 +362,8 @@
 
   <section class="shared-banner" id="sharedBanner" style="display:none;">
     <span class="dot"></span>
-    <span>תחרות משותפת שנטענה מקישור: <b id="sharedTitle">—</b></span>
+    <span>תחרות טעונה: <b id="sharedTitle">—</b></span>
+    <button class="link-btn" id="switchTournamentBtn" type="button" style="margin-inline-start:auto;">✕ החלף תחרות</button>
   </section>
 
   <section class="card" id="cardUpload">
@@ -1002,6 +1003,10 @@
       })
       .subscribe();
   }
+
+  document.getElementById('switchTournamentBtn').addEventListener('click', function () {
+    window.location.href = window.location.pathname;
+  });
 
   // ---------- Init: load from shared link, or show the saved-tournaments list ----------
   (async function init() {
