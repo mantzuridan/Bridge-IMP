@@ -429,19 +429,20 @@
 
   <section class="card hidden" id="cardActivitySetup">
     <div class="step-title">➕ הגדרת פעילות</div>
-    <div class="card-sub">קבעו את רשימת הזוגות לפי שולחן — בזמן הזנת תוצאה תבחרו זוג מהרשימה במקום להקליד שם.</div>
+    <div class="card-sub">קבעו את רשימת הזוגות לפי שולחן — בזמן הזנת תוצאה תבחרו שולחן, ושני הזוגות שיושבים בו יקבלו את התוצאה.</div>
     <div class="field pair-name-field">
       <label for="activityTitleInput">שם הפעילות</label>
       <input type="text" id="activityTitleInput" maxlength="60" placeholder="לדוגמה: אימון שלישי">
     </div>
+    <div class="card-sub">כל שולחן מורכב משני זוגות — צפון-דרום ומזרח-מערב.</div>
     <div class="results-table-wrap">
       <table class="session" id="rosterTable">
-        <thead><tr><th style="width:90px;">שולחן</th><th>שם הזוג</th><th></th></tr></thead>
+        <thead><tr><th style="width:70px;">שולחן</th><th>צפון-דרום</th><th>מזרח-מערב</th><th></th></tr></thead>
         <tbody id="activityRosterBody"></tbody>
       </table>
     </div>
     <div class="btn-row">
-      <button class="btn btn-secondary" id="addRosterRowBtn" type="button">➕ הוסף זוג</button>
+      <button class="btn btn-secondary" id="addRosterRowBtn" type="button">➕ הוסף שולחן</button>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" id="saveActivityBtn" type="button">שמור פעילות</button>
@@ -526,15 +527,10 @@
       <label for="pairName">שם / זוג (לשיתוף בלוח המשותף)</label>
       <input type="text" id="pairName" placeholder="לדוגמה: כהן־לוי" maxlength="40">
     </div>
-    <div class="field-grid" id="activityPairField" style="display:none; max-width:360px;">
-      <div class="field">
-        <label for="activityPairSelect">זוג</label>
-        <select id="activityPairSelect"></select>
-      </div>
-      <div class="field">
-        <label for="entryTableInput">שולחן</label>
-        <input type="text" id="entryTableInput" maxlength="10">
-      </div>
+    <div class="field pair-name-field" id="activityPairField" style="display:none;">
+      <label for="activityTableSelect">שולחן (שני הזוגות שיושבים בו מקבלים את התוצאה, כל אחד לפי הצד שלו)</label>
+      <select id="activityTableSelect"></select>
+      <div class="card-sub" id="tableNamesNote" style="margin-top:0;"></div>
     </div>
     <div class="results-table-wrap">
       <table class="session" id="sessionTable">
@@ -771,8 +767,8 @@
   var savedActivitiesBody = document.getElementById('savedActivitiesBody');
   var plainPairNameField = document.getElementById('plainPairNameField');
   var activityPairField = document.getElementById('activityPairField');
-  var activityPairSelect = document.getElementById('activityPairSelect');
-  var entryTableInput = document.getElementById('entryTableInput');
+  var activityTableSelect = document.getElementById('activityTableSelect');
+  var tableNamesNote = document.getElementById('tableNamesNote');
   var cardLeaderboard = document.getElementById('cardLeaderboard');
   var friendlyModeToggle = document.getElementById('friendlyModeToggle');
   var leaderboardBody = document.getElementById('leaderboardBody');
@@ -928,12 +924,16 @@
     if (!state.lastCalc) return;
     state.sessionRows.push(state.lastCalc);
     renderSession();
+    var c = state.lastCalc;
     if (state.activity) {
-      var opt = activityPairSelect.selectedOptions[0];
-      var pname = opt ? opt.textContent : '';
-      if (pname) submitSharedEntry(state.lastCalc, pname, entryTableInput.value.trim());
+      var t = state.activity.pairs[parseInt(activityTableSelect.value, 10)];
+      if (t) {
+        // Same board, same table: the NS pair's IMP and the EW pair's IMP are exact opposites.
+        submitSharedEntry(c.boardId, c.contract, c.nsScore, c.imp, t.ns, t.table);
+        submitSharedEntry(c.boardId, c.contract, c.nsScore, -c.imp, t.ew, t.table);
+      }
     } else if (state.tournamentId && pairName.value.trim()) {
-      submitSharedEntry(state.lastCalc, pairName.value.trim(), null);
+      submitSharedEntry(c.boardId, c.contract, c.nsScore, c.imp, pairName.value.trim(), null);
     }
   });
 
@@ -1063,15 +1063,15 @@
   });
 
   // ---------- Sharing / Supabase: entries (plain + activity) ----------
-  async function submitSharedEntry(calc, name, tableLabel) {
+  async function submitSharedEntry(boardId, contract, nsScore, imp, name, tableLabel) {
     if (!sb || !state.tournamentId) return;
     var payload = {
       tournament_id: state.tournamentId,
-      board_id: calc.boardId,
+      board_id: boardId,
       pair_name: name,
-      contract_label: calc.contract,
-      ns_score: calc.nsScore,
-      imp: calc.imp
+      contract_label: contract,
+      ns_score: nsScore,
+      imp: imp
     };
     if (state.activity) {
       payload.activity_id = state.activity.id;
@@ -1163,8 +1163,10 @@
   });
 
   // ---------- Activities ----------
+  // Each table seats two pairs, NS and EW; a single board result credits both
+  // (with opposite-sign IMPs, since it's the same physical board instance).
   var rosterRowCounter = 0;
-  function addRosterRow(tableVal, nameVal) {
+  function addRosterRow(tableVal, nsVal, ewVal) {
     rosterRowCounter++;
     var tr = document.createElement('tr');
     var tdTable = document.createElement('td');
@@ -1172,20 +1174,27 @@
     tableInput.type = 'text';
     tableInput.value = (tableVal != null ? tableVal : rosterRowCounter);
     tdTable.appendChild(tableInput);
-    var tdName = document.createElement('td');
-    var nameInput = document.createElement('input');
-    nameInput.type = 'text';
-    nameInput.placeholder = 'שם הזוג';
-    nameInput.value = nameVal || '';
-    tdName.appendChild(nameInput);
+    var tdNs = document.createElement('td');
+    var nsInput = document.createElement('input');
+    nsInput.type = 'text';
+    nsInput.placeholder = 'שם הזוג';
+    nsInput.value = nsVal || '';
+    tdNs.appendChild(nsInput);
+    var tdEw = document.createElement('td');
+    var ewInput = document.createElement('input');
+    ewInput.type = 'text';
+    ewInput.placeholder = 'שם הזוג';
+    ewInput.value = ewVal || '';
+    tdEw.appendChild(ewInput);
     var tdRm = document.createElement('td');
     var rmBtn = document.createElement('button');
     rmBtn.className = 'rm-btn'; rmBtn.type = 'button'; rmBtn.title = 'הסר'; rmBtn.textContent = '✕';
     rmBtn.addEventListener('click', function () { tr.remove(); });
     tdRm.appendChild(rmBtn);
-    tr.appendChild(tdTable); tr.appendChild(tdName); tr.appendChild(tdRm);
+    tr.appendChild(tdTable); tr.appendChild(tdNs); tr.appendChild(tdEw); tr.appendChild(tdRm);
     tr._tableInput = tableInput;
-    tr._nameInput = nameInput;
+    tr._nsInput = nsInput;
+    tr._ewInput = ewInput;
     activityRosterBody.appendChild(tr);
   }
   addRosterRowBtn.addEventListener('click', function () { addRosterRow(); });
@@ -1194,7 +1203,7 @@
     if (!state.tournamentId) { alert('צריך לפרסם/לטעון תחרות לפני שמתחילים פעילות.'); return; }
     activityRosterBody.innerHTML = '';
     rosterRowCounter = 0;
-    addRosterRow(1, '');
+    addRosterRow(1, '', '');
     activityTitleInput.value = '';
     activitySetupNote.textContent = '';
     cardActivitySetup.classList.remove('hidden');
@@ -1205,21 +1214,21 @@
   cancelActivitySetupBtn.addEventListener('click', function () { cardActivitySetup.classList.add('hidden'); });
 
   function collectRoster() {
-    var pairs = [];
-    var id = 1;
+    var tables = [];
     Array.prototype.forEach.call(activityRosterBody.children, function (tr) {
       var tableV = tr._tableInput.value.trim();
-      var nameV = tr._nameInput.value.trim();
-      if (!nameV) return;
-      pairs.push({ id: id++, name: nameV, table: tableV || '1' });
+      var nsV = tr._nsInput.value.trim();
+      var ewV = tr._ewInput.value.trim();
+      if (!nsV && !ewV) return;
+      tables.push({ table: tableV || '1', ns: nsV || ('שולחן ' + (tableV || '1') + ' צפון-דרום'), ew: ewV || ('שולחן ' + (tableV || '1') + ' מזרח-מערב') });
     });
-    return pairs;
+    return tables;
   }
 
   saveActivityBtn.addEventListener('click', async function () {
     if (!sb || !state.tournamentId) return;
     var pairs = collectRoster();
-    if (!pairs.length) { activitySetupNote.textContent = 'צריך להוסיף לפחות זוג אחד עם שם.'; return; }
+    if (!pairs.length) { activitySetupNote.textContent = 'צריך להוסיף לפחות שולחן אחד עם שם זוג.'; return; }
     saveActivityBtn.disabled = true;
     activitySetupNote.textContent = 'שומר...';
     var payload = { tournament_id: state.tournamentId, title: activityTitleInput.value.trim() || 'פעילות', pairs: pairs };
@@ -1231,27 +1240,28 @@
     loadSavedActivities();
   });
 
+  function updateTableNamesNote() {
+    var t = state.activity.pairs[parseInt(activityTableSelect.value, 10)];
+    tableNamesNote.textContent = t ? ('צפון-דרום: ' + t.ns + ' · מזרח-מערב: ' + t.ew) : '';
+  }
+
   function applyActivityUI(activity) {
     state.activity = activity;
-    activityPairSelect.innerHTML = '';
-    activity.pairs.forEach(function (p) {
+    activityTableSelect.innerHTML = '';
+    activity.pairs.forEach(function (t, idx) {
       var opt = document.createElement('option');
-      opt.value = String(p.id);
-      opt.textContent = p.name;
-      opt.setAttribute('data-table', p.table);
-      activityPairSelect.appendChild(opt);
+      opt.value = String(idx);
+      opt.textContent = 'שולחן ' + t.table;
+      activityTableSelect.appendChild(opt);
     });
-    if (activity.pairs.length) entryTableInput.value = activity.pairs[0].table;
+    updateTableNamesNote();
     plainPairNameField.style.display = 'none';
-    activityPairField.style.display = 'grid';
+    activityPairField.style.display = 'flex';
     cardLeaderboard.classList.remove('hidden');
     sharedCardTitle.textContent = 'כניסות בפעילות "' + activity.title + '"';
     sharedTitleEl.textContent = (state.tournament ? state.tournament.title : '') + ' · פעילות: ' + activity.title;
   }
-  activityPairSelect.addEventListener('change', function () {
-    var opt = activityPairSelect.selectedOptions[0];
-    if (opt) entryTableInput.value = opt.getAttribute('data-table') || '';
-  });
+  activityTableSelect.addEventListener('change', updateTableNamesNote);
 
   async function enterActivity(row) {
     if (!state.tournament || state.tournamentId !== row.tournament_id) {
