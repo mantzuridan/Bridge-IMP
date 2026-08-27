@@ -463,6 +463,10 @@
         <label>חשיפה</label>
         <span class="vul-badge" id="vulBadge">—</span>
       </div>
+      <div class="field" id="activityTableField" style="display:none;">
+        <label for="activityTableSelect">שולחן</label>
+        <select id="activityTableSelect"></select>
+      </div>
       <div class="field">
         <label for="fLevel">גובה</label>
         <select id="fLevel">
@@ -501,6 +505,8 @@
       </div>
     </div>
 
+    <div class="card-sub" id="tableNamesNote" style="display:none;"></div>
+
     <div class="btn-row">
       <button class="btn btn-primary" id="calcBtn" type="button">חשב אימפים</button>
     </div>
@@ -526,11 +532,6 @@
     <div class="field pair-name-field" id="plainPairNameField">
       <label for="pairName">שם / זוג (לשיתוף בלוח המשותף)</label>
       <input type="text" id="pairName" placeholder="לדוגמה: כהן־לוי" maxlength="40">
-    </div>
-    <div class="field pair-name-field" id="activityPairField" style="display:none;">
-      <label for="activityTableSelect">שולחן (שני הזוגות שיושבים בו מקבלים את התוצאה, כל אחד לפי הצד שלו)</label>
-      <select id="activityTableSelect"></select>
-      <div class="card-sub" id="tableNamesNote" style="margin-top:0;"></div>
     </div>
     <div class="results-table-wrap">
       <table class="session" id="sessionTable">
@@ -766,7 +767,7 @@
   var cardSavedActivities = document.getElementById('cardSavedActivities');
   var savedActivitiesBody = document.getElementById('savedActivitiesBody');
   var plainPairNameField = document.getElementById('plainPairNameField');
-  var activityPairField = document.getElementById('activityPairField');
+  var activityTableField = document.getElementById('activityTableField');
   var activityTableSelect = document.getElementById('activityTableSelect');
   var tableNamesNote = document.getElementById('tableNamesNote');
   var cardLeaderboard = document.getElementById('cardLeaderboard');
@@ -1002,7 +1003,8 @@
   function resetToPlainTournamentUI() {
     state.activity = null;
     plainPairNameField.style.display = 'flex';
-    activityPairField.style.display = 'none';
+    activityTableField.style.display = 'none';
+    tableNamesNote.style.display = 'none';
     cardLeaderboard.classList.add('hidden');
     sharedCardTitle.textContent = 'לוח משותף לתחרות זו';
   }
@@ -1256,7 +1258,8 @@
     });
     updateTableNamesNote();
     plainPairNameField.style.display = 'none';
-    activityPairField.style.display = 'flex';
+    activityTableField.style.display = 'flex';
+    tableNamesNote.style.display = 'block';
     cardLeaderboard.classList.remove('hidden');
     sharedCardTitle.textContent = 'כניסות בפעילות "' + activity.title + '"';
     sharedTitleEl.textContent = (state.tournament ? state.tournament.title : '') + ' · פעילות: ' + activity.title;
