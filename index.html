@@ -220,6 +220,7 @@
   .shared-banner {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
     padding: 14px 16px;
     background: var(--accent-soft);
@@ -335,6 +336,7 @@
   table.session td { font-variant-numeric: tabular-nums; }
   table.session td.num { direction: ltr; unicode-bidi: embed; }
   table.session tbody tr:hover { background: var(--surface-sunken); }
+  #rosterTable td input { width: 100%; }
   .rm-btn {
     background: none; border: none; color: var(--ink-faint);
     cursor: pointer; font-size: 15px; line-height: 1; padding: 4px;
@@ -345,6 +347,7 @@
   .pair-name-field { max-width: 260px; }
   .card-sub { font-size: 13px; color: var(--ink-muted); margin-top: -8px; }
   .sync-note { font-size: 12.5px; color: var(--ink-faint); }
+  .toggle-label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-muted); cursor: pointer; }
 
   footer.note { font-size: 12.5px; color: var(--ink-faint); text-align: center; padding-top: 6px; }
 
@@ -364,7 +367,8 @@
   <section class="shared-banner" id="sharedBanner" style="display:none;">
     <span class="dot"></span>
     <span>תחרות טעונה: <b id="sharedTitle">—</b></span>
-    <button class="link-btn" id="switchTournamentBtn" type="button" style="margin-inline-start:auto;">✕ החלף תחרות</button>
+    <button class="link-btn" id="startActivityBtn" type="button" style="margin-inline-start:auto;">➕ התחל פעילות</button>
+    <button class="link-btn" id="switchTournamentBtn" type="button">✕ החלף תחרות</button>
   </section>
 
   <section class="card" id="cardUpload">
@@ -395,6 +399,9 @@
       <input type="text" id="shareUrl" readonly>
       <button class="btn btn-secondary" id="copyShareBtn" type="button">העתק קישור</button>
     </div>
+    <div class="btn-row" id="startActivityRow" style="display:none;">
+      <button class="btn btn-secondary" id="startActivityBtn2" type="button">➕ התחל פעילות מהתחרות הזו</button>
+    </div>
     <div class="sync-note" id="publishNote"></div>
   </section>
 
@@ -403,10 +410,44 @@
     <div class="card-sub">לחצו על תחרות כדי לטעון אותה — נוח לגישה מהטלפון בלי להעלות שוב את הקובץ.</div>
     <div class="results-table-wrap">
       <table class="session" id="savedTable">
-        <thead><tr><th>שם</th><th>תאריך</th><th>מפגש</th><th></th></tr></thead>
+        <thead><tr><th>שם</th><th>תאריך</th><th>מפגש</th><th></th><th></th></tr></thead>
         <tbody id="savedBody"></tbody>
       </table>
     </div>
+  </section>
+
+  <section class="card hidden" id="cardSavedActivities">
+    <div class="step-title">🎯 הפעילויות שלי</div>
+    <div class="card-sub">פעילות = תחרות + רשימת זוגות קבועה + טבלת מובילים.</div>
+    <div class="results-table-wrap">
+      <table class="session" id="savedActivitiesTable">
+        <thead><tr><th>שם</th><th>נוצרה</th><th></th><th></th></tr></thead>
+        <tbody id="savedActivitiesBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card hidden" id="cardActivitySetup">
+    <div class="step-title">➕ הגדרת פעילות</div>
+    <div class="card-sub">קבעו את רשימת הזוגות לפי שולחן — בזמן הזנת תוצאה תבחרו זוג מהרשימה במקום להקליד שם.</div>
+    <div class="field pair-name-field">
+      <label for="activityTitleInput">שם הפעילות</label>
+      <input type="text" id="activityTitleInput" maxlength="60" placeholder="לדוגמה: אימון שלישי">
+    </div>
+    <div class="results-table-wrap">
+      <table class="session" id="rosterTable">
+        <thead><tr><th style="width:90px;">שולחן</th><th>שם הזוג</th><th></th></tr></thead>
+        <tbody id="activityRosterBody"></tbody>
+      </table>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="addRosterRowBtn" type="button">➕ הוסף זוג</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="saveActivityBtn" type="button">שמור פעילות</button>
+      <button class="link-btn" id="cancelActivitySetupBtn" type="button">ביטול</button>
+    </div>
+    <div class="sync-note" id="activitySetupNote"></div>
   </section>
 
   <section class="card disabled" id="cardEntry">
@@ -481,9 +522,19 @@
 
   <section class="card" id="cardTotals">
     <div class="step-title"><span class="step-num">3</span> תוצאה מצטברת שלי</div>
-    <div class="field pair-name-field">
+    <div class="field pair-name-field" id="plainPairNameField">
       <label for="pairName">שם / זוג (לשיתוף בלוח המשותף)</label>
       <input type="text" id="pairName" placeholder="לדוגמה: כהן־לוי" maxlength="40">
+    </div>
+    <div class="field-grid" id="activityPairField" style="display:none; max-width:360px;">
+      <div class="field">
+        <label for="activityPairSelect">זוג</label>
+        <select id="activityPairSelect"></select>
+      </div>
+      <div class="field">
+        <label for="entryTableInput">שולחן</label>
+        <input type="text" id="entryTableInput" maxlength="10">
+      </div>
     </div>
     <div class="results-table-wrap">
       <table class="session" id="sessionTable">
@@ -500,13 +551,27 @@
     </div>
   </section>
 
+  <section class="card hidden" id="cardLeaderboard">
+    <div class="step-title">🏆 טבלת מובילים</div>
+    <label class="toggle-label" for="friendlyModeToggle">
+      <input type="checkbox" id="friendlyModeToggle">
+      מצב ידידותי (בורד עם תוצאה שלילית תורם 0, לא מוריד מהניקוד)
+    </label>
+    <div class="results-table-wrap">
+      <table class="session" id="leaderboardTable">
+        <thead><tr><th>#</th><th>זוג</th><th>סה"כ אימפים</th></tr></thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="card hidden" id="cardShared">
-    <div class="step-title"><span class="step-num">4</span> לוח משותף לתחרות זו</div>
+    <div class="step-title"><span class="step-num">4</span> <span id="sharedCardTitle">לוח משותף לתחרות זו</span></div>
     <div class="card-sub">מתעדכן בזמן אמת עם כל מי שמזין תוצאה דרך אותו קישור.</div>
     <div class="results-table-wrap">
       <table class="session" id="sharedTable">
         <thead>
-          <tr><th>שם/זוג</th><th>בורד</th><th>חוזה</th><th>אימפים</th></tr>
+          <tr><th>שם/זוג</th><th>שולחן</th><th>בורד</th><th>חוזה</th><th>אימפים</th><th></th></tr>
         </thead>
         <tbody id="sharedBody"></tbody>
       </table>
@@ -645,7 +710,7 @@
   var sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
   // ---------- App state ----------
-  var state = { tournament: null, boardById: {}, sessionRows: [], lastCalc: null, tournamentId: null, sharedEntries: [] };
+  var state = { tournament: null, boardById: {}, sessionRows: [], lastCalc: null, tournamentId: null, sharedEntries: [], activity: null };
 
   var suitInfo = {
     C: { sym: '♣', name: 'תלתן' },
@@ -665,6 +730,7 @@
   var cardShared = document.getElementById('cardShared');
   var sharedBanner = document.getElementById('sharedBanner');
   var sharedTitleEl = document.getElementById('sharedTitle');
+  var sharedCardTitle = document.getElementById('sharedCardTitle');
   var fBoard = document.getElementById('fBoard');
   var vulBadge = document.getElementById('vulBadge');
   var fLevel = document.getElementById('fLevel');
@@ -691,6 +757,25 @@
   var publishRow = document.getElementById('publishRow');
   var cardSavedList = document.getElementById('cardSavedList');
   var savedBody = document.getElementById('savedBody');
+  var startActivityBtn = document.getElementById('startActivityBtn');
+  var startActivityBtn2 = document.getElementById('startActivityBtn2');
+  var startActivityRow = document.getElementById('startActivityRow');
+  var cardActivitySetup = document.getElementById('cardActivitySetup');
+  var activityTitleInput = document.getElementById('activityTitleInput');
+  var activityRosterBody = document.getElementById('activityRosterBody');
+  var addRosterRowBtn = document.getElementById('addRosterRowBtn');
+  var saveActivityBtn = document.getElementById('saveActivityBtn');
+  var cancelActivitySetupBtn = document.getElementById('cancelActivitySetupBtn');
+  var activitySetupNote = document.getElementById('activitySetupNote');
+  var cardSavedActivities = document.getElementById('cardSavedActivities');
+  var savedActivitiesBody = document.getElementById('savedActivitiesBody');
+  var plainPairNameField = document.getElementById('plainPairNameField');
+  var activityPairField = document.getElementById('activityPairField');
+  var activityPairSelect = document.getElementById('activityPairSelect');
+  var entryTableInput = document.getElementById('entryTableInput');
+  var cardLeaderboard = document.getElementById('cardLeaderboard');
+  var friendlyModeToggle = document.getElementById('friendlyModeToggle');
+  var leaderboardBody = document.getElementById('leaderboardBody');
 
   function applyTournament(t) {
     state.tournament = t;
@@ -753,6 +838,7 @@
     shareBox.classList.remove('show');
     saveNameField.style.display = 'none';
     publishRow.style.display = 'none';
+    startActivityRow.style.display = 'none';
   });
 
   function currentBoard() {
@@ -842,8 +928,12 @@
     if (!state.lastCalc) return;
     state.sessionRows.push(state.lastCalc);
     renderSession();
-    if (state.tournamentId && pairName.value.trim()) {
-      submitSharedEntry(state.lastCalc, pairName.value.trim());
+    if (state.activity) {
+      var opt = activityPairSelect.selectedOptions[0];
+      var pname = opt ? opt.textContent : '';
+      if (pname) submitSharedEntry(state.lastCalc, pname, entryTableInput.value.trim());
+    } else if (state.tournamentId && pairName.value.trim()) {
+      submitSharedEntry(state.lastCalc, pairName.value.trim(), null);
     }
   });
 
@@ -876,10 +966,11 @@
   }
   renderSession();
 
-  // ---------- Sharing / Supabase ----------
-  function setShareUrl(id) {
+  // ---------- Sharing / Supabase: tournaments ----------
+  function setShareUrl(id, param) {
     var url = new URL(window.location.href);
-    url.searchParams.set('t', id);
+    url.search = '';
+    url.searchParams.set(param, id);
     shareUrl.value = url.toString();
     shareBox.classList.add('show');
   }
@@ -899,19 +990,31 @@
     }
     state.tournamentId = res.data.id;
     history.pushState(null, '', '?t=' + res.data.id);
-    setShareUrl(res.data.id);
+    setShareUrl(res.data.id, 't');
     publishNote.textContent = 'נשמר! אפשר לגשת אליו שוב מרשימת "התחרויות השמורות שלי", או לשתף את הקישור.';
     publishRow.style.display = 'none';
+    startActivityRow.style.display = 'flex';
     subscribeShared();
     loadSharedEntries();
     loadSavedList();
   });
 
+  function resetToPlainTournamentUI() {
+    state.activity = null;
+    plainPairNameField.style.display = 'flex';
+    activityPairField.style.display = 'none';
+    cardLeaderboard.classList.add('hidden');
+    sharedCardTitle.textContent = 'לוח משותף לתחרות זו';
+  }
+
   function enterTournament(row) {
     applyTournament({ title: row.title, date: row.date, session: row.session_info, sessions: '', boards: row.boards });
     state.tournamentId = row.id;
+    resetToPlainTournamentUI();
     cardUpload.classList.add('hidden');
     cardSavedList.classList.add('hidden');
+    cardSavedActivities.classList.add('hidden');
+    cardActivitySetup.classList.add('hidden');
     sharedBanner.style.display = 'flex';
     sharedTitleEl.textContent = row.title;
     history.pushState(null, '', '?t=' + row.id);
@@ -934,10 +1037,18 @@
         '<td>' + (row.title || 'ללא שם') + '</td>' +
         '<td class="num">' + (row.date || '—') + '</td>' +
         '<td>' + (row.session_info || '—') + '</td>' +
-        '<td>➜</td>';
+        '<td>➜</td>' +
+        '<td><button class="rm-btn" type="button" title="מחק">🗑</button></td>';
       tr.addEventListener('click', async function () {
         var full = await sb.from('imp_tournaments').select('*').eq('id', row.id).single();
         if (!full.error && full.data) enterTournament(full.data);
+      });
+      tr.querySelector('.rm-btn').addEventListener('click', async function (e) {
+        e.stopPropagation();
+        if (!confirm('למחוק את התחרות "' + (row.title || 'ללא שם') + '"? זה ימחק גם פעילויות וכניסות משויכות.')) return;
+        await sb.from('imp_tournaments').delete().eq('id', row.id);
+        loadSavedList();
+        loadSavedActivities();
       });
       savedBody.appendChild(tr);
     });
@@ -951,16 +1062,22 @@
     setTimeout(function () { copyShareBtn.textContent = 'העתק קישור'; }, 1500);
   });
 
-  async function submitSharedEntry(calc, name) {
+  // ---------- Sharing / Supabase: entries (plain + activity) ----------
+  async function submitSharedEntry(calc, name, tableLabel) {
     if (!sb || !state.tournamentId) return;
-    await sb.from('imp_entries').insert({
+    var payload = {
       tournament_id: state.tournamentId,
       board_id: calc.boardId,
       pair_name: name,
       contract_label: calc.contract,
       ns_score: calc.nsScore,
       imp: calc.imp
-    });
+    };
+    if (state.activity) {
+      payload.activity_id = state.activity.id;
+      payload.table_label = tableLabel || null;
+    }
+    await sb.from('imp_entries').insert(payload);
   }
 
   function renderShared() {
@@ -975,31 +1092,67 @@
         var impCls = r.imp > 0 ? 'imp-pos' : (r.imp < 0 ? 'imp-neg' : 'imp-zero');
         tr.innerHTML =
           '<td>' + (r.pair_name || 'ללא שם') + '</td>' +
+          '<td class="num">' + (r.table_label || '—') + '</td>' +
           '<td class="num">' + r.board_id + '</td>' +
           '<td>' + r.contract_label + '</td>' +
-          '<td class="num ' + impCls + '">' + (r.imp > 0 ? '+' : '') + r.imp + '</td>';
+          '<td class="num ' + impCls + '">' + (r.imp > 0 ? '+' : '') + r.imp + '</td>' +
+          '<td><button class="rm-btn" data-id="' + r.id + '" title="הסר">✕</button></td>';
         sharedBody.appendChild(tr);
+      });
+      sharedBody.querySelectorAll('.rm-btn').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          await sb.from('imp_entries').delete().eq('id', this.getAttribute('data-id'));
+          loadSharedEntries();
+        });
       });
     }
   }
 
+  function renderLeaderboard() {
+    var totals = {};
+    state.sharedEntries.forEach(function (r) {
+      var key = r.pair_name || 'ללא שם';
+      if (!totals[key]) totals[key] = { raw: 0, friendly: 0 };
+      totals[key].raw += r.imp;
+      totals[key].friendly += Math.max(r.imp, 0);
+    });
+    var friendly = friendlyModeToggle.checked;
+    var list = Object.keys(totals).map(function (name) {
+      return { name: name, total: friendly ? totals[name].friendly : totals[name].raw };
+    });
+    list.sort(function (a, b) { return b.total - a.total; });
+    leaderboardBody.innerHTML = '';
+    list.forEach(function (row, idx) {
+      var tr = document.createElement('tr');
+      var impCls = row.total > 0 ? 'imp-pos' : (row.total < 0 ? 'imp-neg' : 'imp-zero');
+      tr.innerHTML =
+        '<td class="num">' + (idx + 1) + '</td>' +
+        '<td>' + row.name + '</td>' +
+        '<td class="num ' + impCls + '">' + (row.total > 0 ? '+' : '') + row.total + '</td>';
+      leaderboardBody.appendChild(tr);
+    });
+  }
+  friendlyModeToggle.addEventListener('change', function () { if (state.activity) renderLeaderboard(); });
+
   async function loadSharedEntries() {
     if (!sb || !state.tournamentId) return;
-    var res = await sb.from('imp_entries')
-      .select('pair_name, board_id, contract_label, imp, created_at')
-      .eq('tournament_id', state.tournamentId)
-      .order('created_at', { ascending: false });
+    var query = sb.from('imp_entries').select('id, pair_name, board_id, contract_label, imp, table_label, created_at');
+    query = state.activity ? query.eq('activity_id', state.activity.id) : query.eq('tournament_id', state.tournamentId).is('activity_id', null);
+    var res = await query.order('created_at', { ascending: false });
     if (!res.error && res.data) {
       state.sharedEntries = res.data;
       renderShared();
+      if (state.activity) renderLeaderboard();
     }
     cardShared.classList.remove('hidden');
   }
 
   function subscribeShared() {
     if (!sb || !state.tournamentId) return;
-    sb.channel('imp-entries-' + state.tournamentId)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'imp_entries', filter: 'tournament_id=eq.' + state.tournamentId }, function () {
+    var filter = state.activity ? ('activity_id=eq.' + state.activity.id) : ('tournament_id=eq.' + state.tournamentId);
+    var channelName = 'imp-entries-' + (state.activity ? state.activity.id : state.tournamentId);
+    sb.channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'imp_entries', filter: filter }, function () {
         loadSharedEntries();
       })
       .subscribe();
@@ -1009,14 +1162,162 @@
     window.location.href = window.location.pathname;
   });
 
-  // ---------- Init: load from shared link, or show the saved-tournaments list ----------
-  (async function init() {
-    var tid = new URLSearchParams(window.location.search).get('t');
-    if (!tid) { loadSavedList(); return; }
+  // ---------- Activities ----------
+  var rosterRowCounter = 0;
+  function addRosterRow(tableVal, nameVal) {
+    rosterRowCounter++;
+    var tr = document.createElement('tr');
+    var tdTable = document.createElement('td');
+    var tableInput = document.createElement('input');
+    tableInput.type = 'text';
+    tableInput.value = (tableVal != null ? tableVal : rosterRowCounter);
+    tdTable.appendChild(tableInput);
+    var tdName = document.createElement('td');
+    var nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'שם הזוג';
+    nameInput.value = nameVal || '';
+    tdName.appendChild(nameInput);
+    var tdRm = document.createElement('td');
+    var rmBtn = document.createElement('button');
+    rmBtn.className = 'rm-btn'; rmBtn.type = 'button'; rmBtn.title = 'הסר'; rmBtn.textContent = '✕';
+    rmBtn.addEventListener('click', function () { tr.remove(); });
+    tdRm.appendChild(rmBtn);
+    tr.appendChild(tdTable); tr.appendChild(tdName); tr.appendChild(tdRm);
+    tr._tableInput = tableInput;
+    tr._nameInput = nameInput;
+    activityRosterBody.appendChild(tr);
+  }
+  addRosterRowBtn.addEventListener('click', function () { addRosterRow(); });
+
+  function openActivitySetup() {
+    if (!state.tournamentId) { alert('צריך לפרסם/לטעון תחרות לפני שמתחילים פעילות.'); return; }
+    activityRosterBody.innerHTML = '';
+    rosterRowCounter = 0;
+    addRosterRow(1, '');
+    activityTitleInput.value = '';
+    activitySetupNote.textContent = '';
+    cardActivitySetup.classList.remove('hidden');
+    cardActivitySetup.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  startActivityBtn.addEventListener('click', openActivitySetup);
+  startActivityBtn2.addEventListener('click', openActivitySetup);
+  cancelActivitySetupBtn.addEventListener('click', function () { cardActivitySetup.classList.add('hidden'); });
+
+  function collectRoster() {
+    var pairs = [];
+    var id = 1;
+    Array.prototype.forEach.call(activityRosterBody.children, function (tr) {
+      var tableV = tr._tableInput.value.trim();
+      var nameV = tr._nameInput.value.trim();
+      if (!nameV) return;
+      pairs.push({ id: id++, name: nameV, table: tableV || '1' });
+    });
+    return pairs;
+  }
+
+  saveActivityBtn.addEventListener('click', async function () {
+    if (!sb || !state.tournamentId) return;
+    var pairs = collectRoster();
+    if (!pairs.length) { activitySetupNote.textContent = 'צריך להוסיף לפחות זוג אחד עם שם.'; return; }
+    saveActivityBtn.disabled = true;
+    activitySetupNote.textContent = 'שומר...';
+    var payload = { tournament_id: state.tournamentId, title: activityTitleInput.value.trim() || 'פעילות', pairs: pairs };
+    var res = await sb.from('imp_activities').insert(payload).select().single();
+    saveActivityBtn.disabled = false;
+    if (res.error) { activitySetupNote.textContent = 'השמירה נכשלה: ' + res.error.message; return; }
+    cardActivitySetup.classList.add('hidden');
+    await enterActivity(res.data);
+    loadSavedActivities();
+  });
+
+  function applyActivityUI(activity) {
+    state.activity = activity;
+    activityPairSelect.innerHTML = '';
+    activity.pairs.forEach(function (p) {
+      var opt = document.createElement('option');
+      opt.value = String(p.id);
+      opt.textContent = p.name;
+      opt.setAttribute('data-table', p.table);
+      activityPairSelect.appendChild(opt);
+    });
+    if (activity.pairs.length) entryTableInput.value = activity.pairs[0].table;
+    plainPairNameField.style.display = 'none';
+    activityPairField.style.display = 'grid';
+    cardLeaderboard.classList.remove('hidden');
+    sharedCardTitle.textContent = 'כניסות בפעילות "' + activity.title + '"';
+    sharedTitleEl.textContent = (state.tournament ? state.tournament.title : '') + ' · פעילות: ' + activity.title;
+  }
+  activityPairSelect.addEventListener('change', function () {
+    var opt = activityPairSelect.selectedOptions[0];
+    if (opt) entryTableInput.value = opt.getAttribute('data-table') || '';
+  });
+
+  async function enterActivity(row) {
+    if (!state.tournament || state.tournamentId !== row.tournament_id) {
+      var tRes = await sb.from('imp_tournaments').select('*').eq('id', row.tournament_id).single();
+      if (tRes.error || !tRes.data) { alert('לא הצלחתי לטעון את התחרות של הפעילות.'); return; }
+      applyTournament({ title: tRes.data.title, date: tRes.data.date, session: tRes.data.session_info, sessions: '', boards: tRes.data.boards });
+      state.tournamentId = tRes.data.id;
+    }
+    applyActivityUI(row);
+    cardUpload.classList.add('hidden');
+    cardSavedList.classList.add('hidden');
+    cardSavedActivities.classList.add('hidden');
+    cardActivitySetup.classList.add('hidden');
+    sharedBanner.style.display = 'flex';
+    history.pushState(null, '', '?a=' + row.id);
+    subscribeShared();
+    loadSharedEntries();
+  }
+
+  async function loadSavedActivities() {
     if (!sb) return;
-    var res = await sb.from('imp_tournaments').select('*').eq('id', tid).single();
-    if (res.error || !res.data) { loadSavedList(); return; }
-    enterTournament(res.data);
+    var res = await sb.from('imp_activities')
+      .select('id, title, tournament_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(25);
+    if (res.error || !res.data || !res.data.length) { cardSavedActivities.classList.add('hidden'); return; }
+    savedActivitiesBody.innerHTML = '';
+    res.data.forEach(function (row) {
+      var tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      var dateTxt = row.created_at ? new Date(row.created_at).toLocaleDateString('he-IL') : '—';
+      tr.innerHTML =
+        '<td>' + (row.title || 'ללא שם') + '</td>' +
+        '<td>' + dateTxt + '</td>' +
+        '<td>➜</td>' +
+        '<td><button class="rm-btn" type="button" title="מחק">🗑</button></td>';
+      tr.addEventListener('click', async function () {
+        var full = await sb.from('imp_activities').select('*').eq('id', row.id).single();
+        if (!full.error && full.data) enterActivity(full.data);
+      });
+      tr.querySelector('.rm-btn').addEventListener('click', async function (e) {
+        e.stopPropagation();
+        if (!confirm('למחוק את הפעילות "' + (row.title || 'ללא שם') + '"? זה ימחק גם את הכניסות שלה.')) return;
+        await sb.from('imp_activities').delete().eq('id', row.id);
+        loadSavedActivities();
+      });
+      savedActivitiesBody.appendChild(tr);
+    });
+    cardSavedActivities.classList.remove('hidden');
+  }
+
+  // ---------- Init: load from activity/tournament link, or show the saved lists ----------
+  (async function init() {
+    var params = new URLSearchParams(window.location.search);
+    var aid = params.get('a');
+    var tid = params.get('t');
+    if (aid && sb) {
+      var aRes = await sb.from('imp_activities').select('*').eq('id', aid).single();
+      if (!aRes.error && aRes.data) { await enterActivity(aRes.data); return; }
+    }
+    if (tid && sb) {
+      var res = await sb.from('imp_tournaments').select('*').eq('id', tid).single();
+      if (!res.error && res.data) { enterTournament(res.data); return; }
+    }
+    loadSavedList();
+    loadSavedActivities();
   })();
 })();
 </script>
