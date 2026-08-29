@@ -60,3 +60,14 @@ create policy "public delete" on public.imp_entries for delete using (true);
 create policy "public delete" on public.imp_tournaments for delete using (true);
 grant delete on public.imp_entries to anon, authenticated;
 grant delete on public.imp_tournaments to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Migration 3: editing an activity (rename the activity or a pair) needs
+-- UPDATE, which was never granted. Run this once, in addition to everything above.
+-- ---------------------------------------------------------------------------
+
+create policy "public update" on public.imp_activities for update using (true) with check (true);
+grant update on public.imp_activities to anon, authenticated;
+
+create policy "public update" on public.imp_entries for update using (true) with check (true);
+grant update on public.imp_entries to anon, authenticated;
