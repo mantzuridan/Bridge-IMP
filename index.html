@@ -563,6 +563,9 @@
         <tbody id="leaderboardBody"></tbody>
       </table>
     </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="shareLeaderboardBtn" type="button">📸 תמונה של חמשת המובילים</button>
+    </div>
   </section>
 
   <section class="card hidden" id="cardShared">
@@ -778,6 +781,7 @@
   var cardLeaderboard = document.getElementById('cardLeaderboard');
   var friendlyModeToggle = document.getElementById('friendlyModeToggle');
   var leaderboardBody = document.getElementById('leaderboardBody');
+  var shareLeaderboardBtn = document.getElementById('shareLeaderboardBtn');
 
   function applyTournament(t) {
     state.tournament = t;
@@ -1116,7 +1120,7 @@
     }
   }
 
-  function renderLeaderboard() {
+  function computeLeaderboardList() {
     var totals = {};
     state.sharedEntries.forEach(function (r) {
       var key = r.pair_name || 'ללא שם';
@@ -1129,6 +1133,11 @@
       return { name: name, total: friendly ? totals[name].friendly : totals[name].raw };
     });
     list.sort(function (a, b) { return b.total - a.total; });
+    return list;
+  }
+
+  function renderLeaderboard() {
+    var list = computeLeaderboardList();
     leaderboardBody.innerHTML = '';
     list.forEach(function (row, idx) {
       var tr = document.createElement('tr');
@@ -1141,6 +1150,105 @@
     });
   }
   friendlyModeToggle.addEventListener('change', function () { if (state.activity) renderLeaderboard(); });
+
+  // ---------- Share leaderboard as an image ----------
+  function drawLeaderboardCanvas(list) {
+    var rows = list.slice(0, 5);
+    var rowH = 150;
+    var headerH = 300;
+    var footerH = 90;
+    var W = 1000;
+    var H = headerH + Math.max(rows.length, 1) * rowH + footerH;
+    var canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    ctx.direction = 'rtl';
+
+    ctx.fillStyle = '#F5F6F1';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = '#1F4D38';
+    ctx.fillRect(0, 0, W, headerH);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '84px sans-serif';
+    ctx.fillText('🏆', W / 2, 130);
+
+    ctx.font = '700 44px "Frank Ruhl Libre", "Times New Roman", serif';
+    ctx.fillText(state.activity.title || 'טבלת מובילים', W / 2, 205);
+
+    ctx.font = '400 24px "Heebo", "Segoe UI", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    var subtitle = state.tournament ? state.tournament.title : '';
+    ctx.fillText(subtitle, W / 2, 250);
+
+    var medals = ['🥇', '🥈', '🥉'];
+    rows.forEach(function (row, idx) {
+      var y = headerH + idx * rowH;
+      ctx.fillStyle = idx % 2 === 0 ? '#FFFFFF' : '#EEF1EA';
+      ctx.fillRect(50, y + 12, W - 100, rowH - 24);
+
+      var midY = y + rowH / 2 + 14;
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#1F4D38';
+      ctx.font = '700 46px sans-serif';
+      ctx.fillText(medals[idx] || String(idx + 1), W - 90, midY);
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#1B2620';
+      ctx.font = '700 36px "Heebo", "Segoe UI", sans-serif';
+      ctx.fillText(row.name, W - 190, midY);
+
+      ctx.textAlign = 'left';
+      ctx.font = '700 34px "Frank Ruhl Libre", "Times New Roman", serif';
+      ctx.fillStyle = row.total > 0 ? '#2F6B4F' : (row.total < 0 ? '#A9403F' : '#5B6B60');
+      ctx.fillText((row.total > 0 ? '+' : '') + row.total, 90, midY);
+    });
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8B9A8F';
+    ctx.font = '400 22px "Heebo", "Segoe UI", sans-serif';
+    ctx.fillText('One Table Tournament', W / 2, H - 35);
+
+    return canvas;
+  }
+
+  shareLeaderboardBtn.addEventListener('click', async function () {
+    if (!state.activity) return;
+    var list = computeLeaderboardList();
+    if (!list.length) { alert('אין עדיין תוצאות בטבלת המובילים.'); return; }
+    var prevText = shareLeaderboardBtn.textContent;
+    shareLeaderboardBtn.disabled = true;
+    shareLeaderboardBtn.textContent = 'מכין תמונה...';
+    try {
+      if (document.fonts && document.fonts.ready) { await document.fonts.ready; }
+      var canvas = drawLeaderboardCanvas(list);
+      canvas.toBlob(async function (blob) {
+        shareLeaderboardBtn.disabled = false;
+        shareLeaderboardBtn.textContent = prevText;
+        if (!blob) return;
+        var safeName = (state.activity.title || 'leaderboard').replace(/[\\/:*?"<>|]/g, '').trim() || 'leaderboard';
+        var file = new File([blob], safeName + '.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: state.activity.title }); } catch (e) { /* user cancelled */ }
+        } else {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = safeName + '.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+        }
+      }, 'image/png');
+    } catch (e) {
+      shareLeaderboardBtn.disabled = false;
+      shareLeaderboardBtn.textContent = prevText;
+    }
+  });
 
   async function loadSharedEntries() {
     if (!sb || !state.tournamentId) return;
