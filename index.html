@@ -1177,12 +1177,11 @@
     ctx.fillText('🏆', W / 2, 130);
 
     ctx.font = '700 44px "Frank Ruhl Libre", "Times New Roman", serif';
-    ctx.fillText('חמשת המובילים בתחרות:', W / 2, 205);
+    ctx.fillText(state.activity.title || 'טבלת מובילים', W / 2, 205);
 
     ctx.font = '400 24px "Heebo", "Segoe UI", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    var subtitle = state.tournament ? state.tournament.title : '';
-    ctx.fillText(subtitle, W / 2, 250);
+    ctx.fillText('חמשת המובילים בתחרות:', W / 2, 250);
 
     var medals = ['🥇', '🥈', '🥉'];
     rows.forEach(function (row, idx) {
