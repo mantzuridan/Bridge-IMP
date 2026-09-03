@@ -259,6 +259,7 @@
     outline: 2px solid var(--focus-ring);
     outline-offset: 1px;
   }
+  select:disabled { opacity: 0.5; }
   .vul-badge {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 6px 12px; border-radius: 999px;
@@ -508,6 +509,11 @@
       </div>
     </div>
 
+    <label class="toggle-label" for="allPassCheckbox">
+      <input type="checkbox" id="allPassCheckbox">
+      כולם עברו (הבורד לא נפתח — ניקוד 0)
+    </label>
+
     <div class="card-sub" id="tableNamesNote" style="display:none;"></div>
 
     <div class="btn-row">
@@ -741,6 +747,7 @@
   var fDbl = document.getElementById('fDbl');
   var fDecl = document.getElementById('fDecl');
   var fResult = document.getElementById('fResult');
+  var allPassCheckbox = document.getElementById('allPassCheckbox');
   var calcBtn = document.getElementById('calcBtn');
   var resultPreview = document.getElementById('resultPreview');
   var addRowBtn = document.getElementById('addRowBtn');
@@ -898,20 +905,33 @@
     return fLevel.value + s.sym + dbl + resTxt + ' (' + declTxt + ')';
   }
 
+  var contractFields = [fLevel, fSuit, fDbl, fDecl, fResult];
+  allPassCheckbox.addEventListener('change', function () {
+    contractFields.forEach(function (el) { el.disabled = allPassCheckbox.checked; });
+    resultPreview.classList.remove('show');
+  });
+
   calcBtn.addEventListener('click', function () {
     var b = currentBoard();
     if (!b) { alert('טרם נטען קובץ תחרות.'); return; }
-    var input = {
-      level: parseInt(fLevel.value, 10),
-      suit: fSuit.value,
-      doubled: parseInt(fDbl.value, 10),
-      declarerSide: fDecl.value,
-      resultRel: parseInt(fResult.value, 10),
-      vul: b.vul
-    };
-    var nsScore = contractToNsScore(input);
+    var nsScore, label;
+    if (allPassCheckbox.checked) {
+      nsScore = 0;
+      label = 'כולם עברו';
+    } else {
+      var input = {
+        level: parseInt(fLevel.value, 10),
+        suit: fSuit.value,
+        doubled: parseInt(fDbl.value, 10),
+        declarerSide: fDecl.value,
+        resultRel: parseInt(fResult.value, 10),
+        vul: b.vul
+      };
+      nsScore = contractToNsScore(input);
+      label = contractLabel();
+    }
     var result = crossImp(nsScore, b.scores);
-    state.lastCalc = { boardId: b.id, contract: contractLabel(), nsScore: nsScore, imp: result.rounded };
+    state.lastCalc = { boardId: b.id, contract: label, nsScore: nsScore, imp: result.rounded };
 
     document.getElementById('rScore').textContent = (nsScore > 0 ? '+' : '') + nsScore;
     document.getElementById('rCount').textContent = b.scores.length;
