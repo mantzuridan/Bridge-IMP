@@ -350,6 +350,28 @@
   .sync-note { font-size: 12.5px; color: var(--ink-faint); }
   .toggle-label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-muted); cursor: pointer; }
 
+  .wizard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .wizard-btn {
+    min-height: 64px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface-sunken);
+    color: var(--ink);
+    font-family: var(--body-font);
+    font-weight: 700;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 10px;
+    gap: 2px;
+    transition: background 0.1s ease, transform 0.05s ease;
+  }
+  .wizard-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .wizard-btn:active { transform: scale(0.96); }
+  .wizard-btn.wizard-btn-wide { grid-column: 1 / -1; font-size: 18px; }
+  .wizard-btn small { font-weight: 400; font-size: 13px; color: var(--ink-muted); }
+
   footer.note { font-size: 12.5px; color: var(--ink-faint); text-align: center; padding-top: 6px; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -458,6 +480,10 @@
   <section class="card disabled" id="cardEntry">
     <div class="step-title"><span class="step-num">2</span> הזנת כריזה ותוצאה</div>
 
+    <div class="btn-row" id="openWizardRow" style="display:none;">
+      <button class="btn btn-primary" id="openWizardBtn" type="button">🚀 הכנס תוצאה</button>
+    </div>
+
     <div class="field-grid">
       <div class="field">
         <label for="fBoard">בורד</label>
@@ -533,6 +559,16 @@
       <div class="btn-row">
         <button class="btn btn-secondary" id="addRowBtn" type="button">➕ הוסף לתוצאה המצטברת</button>
       </div>
+    </div>
+  </section>
+
+  <section class="card hidden" id="cardWizard">
+    <div class="step-title">🚀 הכנס תוצאה</div>
+    <div class="card-sub" id="wizardBreadcrumb"></div>
+    <div id="wizardBody"></div>
+    <div class="btn-row">
+      <button class="link-btn" id="wizardBackBtn" type="button" style="display:none;">⟵ חזור</button>
+      <button class="link-btn" id="wizardCloseBtn" type="button">✕ סגור</button>
     </div>
   </section>
 
@@ -719,7 +755,7 @@
   var sb = (typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
   // ---------- App state ----------
-  var state = { tournament: null, boardById: {}, sessionRows: [], lastCalc: null, tournamentId: null, sharedEntries: [], activity: null, editingActivityId: null };
+  var state = { tournament: null, boardById: {}, sessionRows: [], lastCalc: null, tournamentId: null, sharedEntries: [], activity: null, editingActivityId: null, wizard: null };
 
   var suitInfo = {
     C: { sym: '♣', name: 'תלתן' },
@@ -789,6 +825,13 @@
   var friendlyModeToggle = document.getElementById('friendlyModeToggle');
   var leaderboardBody = document.getElementById('leaderboardBody');
   var shareLeaderboardBtn = document.getElementById('shareLeaderboardBtn');
+  var openWizardRow = document.getElementById('openWizardRow');
+  var openWizardBtn = document.getElementById('openWizardBtn');
+  var cardWizard = document.getElementById('cardWizard');
+  var wizardBreadcrumb = document.getElementById('wizardBreadcrumb');
+  var wizardBody = document.getElementById('wizardBody');
+  var wizardBackBtn = document.getElementById('wizardBackBtn');
+  var wizardCloseBtn = document.getElementById('wizardCloseBtn');
 
   function applyTournament(t) {
     state.tournament = t;
@@ -1035,6 +1078,9 @@
     activityTableField.style.display = 'none';
     tableNamesNote.style.display = 'none';
     editActivityBtn.style.display = 'none';
+    openWizardRow.style.display = 'none';
+    cardWizard.classList.add('hidden');
+    state.wizard = null;
     cardLeaderboard.classList.add('hidden');
     sharedCardTitle.textContent = 'לוח משותף לתחרות זו';
   }
@@ -1443,6 +1489,7 @@
     activityTableField.style.display = 'flex';
     tableNamesNote.style.display = 'block';
     editActivityBtn.style.display = '';
+    openWizardRow.style.display = 'flex';
     cardLeaderboard.classList.remove('hidden');
     sharedCardTitle.textContent = 'כניסות בפעילות "' + activity.title + '"';
     sharedTitleEl.textContent = (state.tournament ? state.tournament.title : '') + ' · פעילות: ' + activity.title;
@@ -1498,6 +1545,209 @@
     });
     cardSavedActivities.classList.remove('hidden');
   }
+
+  // ---------- Fast entry wizard ----------
+  var WIZARD_STEPS = ['table', 'board', 'level', 'suit', 'doubled', 'declarer', 'result', 'confirm'];
+
+  function wizardButton(label, sublabel, onClick, wide) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'wizard-btn' + (wide ? ' wizard-btn-wide' : '');
+    var span = document.createElement('span');
+    span.textContent = label;
+    btn.appendChild(span);
+    if (sublabel) {
+      var small = document.createElement('small');
+      small.textContent = sublabel;
+      btn.appendChild(small);
+    }
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function wizardGrid(buttons) {
+    var grid = document.createElement('div');
+    grid.className = 'wizard-grid';
+    buttons.forEach(function (b) { grid.appendChild(b); });
+    wizardBody.appendChild(grid);
+  }
+
+  function wizardGoto(step) {
+    state.wizard.step = step;
+    renderWizardStep();
+  }
+
+  function buildWizardBreadcrumb() {
+    var w = state.wizard;
+    var parts = [];
+    if (w.tableIdx != null) parts.push('שולחן ' + state.activity.pairs[w.tableIdx].table);
+    if (w.boardId != null) parts.push('בורד ' + w.boardId);
+    if (w.allPass) {
+      parts.push('כולם עברו');
+    } else {
+      if (w.level != null && w.suit != null) {
+        var dbl = w.doubled === 1 ? ' X' : (w.doubled === 2 ? ' XX' : '');
+        parts.push(w.level + suitInfo[w.suit].sym + dbl);
+      } else if (w.level != null) {
+        parts.push(String(w.level));
+      }
+      if (w.declarerSide != null) {
+        var t = state.activity.pairs[w.tableIdx];
+        parts.push(w.declarerSide === 'NS' ? t.ns : t.ew);
+      }
+      if (w.resultRel != null) {
+        parts.push(w.resultRel === 0 ? 'בדיוק' : (w.resultRel > 0 ? '+' + w.resultRel : String(w.resultRel)));
+      }
+    }
+    return parts.join(' · ');
+  }
+
+  function renderWizardStep() {
+    var w = state.wizard;
+    wizardBackBtn.style.display = (w.step === 'table') ? 'none' : '';
+    wizardBreadcrumb.textContent = buildWizardBreadcrumb();
+    wizardBody.innerHTML = '';
+
+    if (w.step === 'table') {
+      wizardGrid(state.activity.pairs.map(function (t, idx) {
+        return wizardButton('שולחן ' + t.table, t.ns + ' / ' + t.ew, function () {
+          w.tableIdx = idx;
+          wizardGoto('board');
+        });
+      }));
+    } else if (w.step === 'board') {
+      wizardGrid(state.tournament.boards.map(function (b) {
+        return wizardButton(String(b.id), null, function () {
+          w.boardId = b.id;
+          wizardGoto('level');
+        });
+      }));
+    } else if (w.step === 'level') {
+      var buttons = [];
+      for (var lvl = 1; lvl <= 7; lvl++) {
+        (function (lvl) {
+          buttons.push(wizardButton(String(lvl), null, function () {
+            w.level = lvl;
+            wizardGoto('suit');
+          }));
+        })(lvl);
+      }
+      buttons.push(wizardButton('כולם עברו', 'הבורד לא נפתח', function () {
+        w.allPass = true;
+        wizardGoto('confirm');
+      }, true));
+      wizardGrid(buttons);
+    } else if (w.step === 'suit') {
+      wizardGrid(['C', 'D', 'H', 'S', 'N'].map(function (s) {
+        return wizardButton(suitInfo[s].sym, suitInfo[s].name, function () {
+          w.suit = s;
+          wizardGoto('doubled');
+        });
+      }));
+    } else if (w.step === 'doubled') {
+      wizardGrid([[0, 'רגיל'], [1, 'X'], [2, 'XX']].map(function (pair) {
+        return wizardButton(pair[1], null, function () {
+          w.doubled = pair[0];
+          wizardGoto('declarer');
+        });
+      }));
+    } else if (w.step === 'declarer') {
+      var t = state.activity.pairs[w.tableIdx];
+      wizardGrid([
+        wizardButton(t.ns, 'צפון-דרום', function () { w.declarerSide = 'NS'; wizardGoto('result'); }, true),
+        wizardButton(t.ew, 'מזרח-מערב', function () { w.declarerSide = 'EW'; wizardGoto('result'); }, true)
+      ]);
+    } else if (w.step === 'result') {
+      var tricksBid = 6 + w.level;
+      var maxOver = 13 - tricksBid;
+      var maxUnder = tricksBid;
+      var rButtons = [wizardButton('בדיוק', null, function () { w.resultRel = 0; wizardGoto('confirm'); })];
+      for (var o = 1; o <= maxOver; o++) {
+        (function (o) { rButtons.push(wizardButton('+' + o, null, function () { w.resultRel = o; wizardGoto('confirm'); })); })(o);
+      }
+      for (var u = 1; u <= maxUnder; u++) {
+        (function (u) { rButtons.push(wizardButton('−' + u, null, function () { w.resultRel = -u; wizardGoto('confirm'); })); })(u);
+      }
+      wizardGrid(rButtons);
+    } else if (w.step === 'confirm') {
+      renderWizardConfirm();
+    }
+  }
+
+  function renderWizardConfirm() {
+    var w = state.wizard;
+    var b = state.boardById[w.boardId];
+    var nsScore, label;
+    if (w.allPass) {
+      nsScore = 0;
+      label = 'כולם עברו';
+    } else {
+      var input = { level: w.level, suit: w.suit, doubled: w.doubled, declarerSide: w.declarerSide, resultRel: w.resultRel, vul: b.vul };
+      nsScore = contractToNsScore(input);
+      var s = suitInfo[w.suit];
+      var dbl = w.doubled === 1 ? ' X' : (w.doubled === 2 ? ' XX' : '');
+      var resTxt = w.resultRel === 0 ? '' : (w.resultRel > 0 ? ' +' + w.resultRel : ' ' + w.resultRel);
+      label = w.level + s.sym + dbl + resTxt;
+    }
+    var result = crossImp(nsScore, b.scores);
+    w.computed = { boardId: w.boardId, contract: label, nsScore: nsScore, imp: result.rounded };
+
+    var impCls = result.rounded > 0 ? 'imp-pos' : (result.rounded < 0 ? 'imp-neg' : 'imp-zero');
+    var summary = document.createElement('div');
+    summary.className = 'result-preview show';
+    summary.innerHTML =
+      '<div class="row"><span class="k">חוזה</span><span class="v">' + label + '</span></div>' +
+      '<div class="row"><span class="k">ניקוד גולמי (מנקודת מבט צפון־דרום)</span><span class="v">' + (nsScore > 0 ? '+' : '') + nsScore + '</span></div>' +
+      '<div class="imp-hero"><span class="k">אימפים</span><span class="v ' + impCls + '">' + (result.rounded > 0 ? '+' : '') + result.rounded + '</span></div>';
+    wizardBody.appendChild(summary);
+
+    var btnRow = document.createElement('div');
+    btnRow.className = 'btn-row';
+    var saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-primary';
+    saveBtn.type = 'button';
+    saveBtn.textContent = '✅ שמור תוצאה';
+    saveBtn.addEventListener('click', wizardSaveResult);
+    btnRow.appendChild(saveBtn);
+    wizardBody.appendChild(btnRow);
+  }
+
+  function wizardSaveResult() {
+    var w = state.wizard;
+    var c = w.computed;
+    var t = state.activity.pairs[w.tableIdx];
+    state.sessionRows.push(c);
+    renderSession();
+    submitSharedEntry(c.boardId, c.contract, c.nsScore, c.imp, t.ns, t.table);
+    submitSharedEntry(c.boardId, c.contract, c.nsScore, -c.imp, t.ew, t.table);
+
+    // Ready for the next board at the same table.
+    w.step = 'board';
+    w.boardId = null; w.level = null; w.suit = null; w.doubled = 0;
+    w.allPass = false; w.declarerSide = null; w.resultRel = null; w.computed = null;
+    renderWizardStep();
+  }
+
+  openWizardBtn.addEventListener('click', function () {
+    if (!state.activity) return;
+    state.wizard = { step: 'table', tableIdx: null, boardId: null, level: null, suit: null, doubled: 0, allPass: false, declarerSide: null, resultRel: null };
+    cardWizard.classList.remove('hidden');
+    renderWizardStep();
+    cardWizard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  wizardBackBtn.addEventListener('click', function () {
+    var w = state.wizard;
+    if (!w) return;
+    if (w.allPass && w.step === 'confirm') { w.allPass = false; wizardGoto('level'); return; }
+    var idx = WIZARD_STEPS.indexOf(w.step);
+    if (idx > 0) wizardGoto(WIZARD_STEPS[idx - 1]);
+  });
+
+  wizardCloseBtn.addEventListener('click', function () {
+    cardWizard.classList.add('hidden');
+    state.wizard = null;
+  });
 
   // ---------- Init: load from activity/tournament link, or show the saved lists ----------
   (async function init() {
